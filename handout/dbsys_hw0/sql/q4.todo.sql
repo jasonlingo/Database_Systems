@@ -7,3 +7,4 @@
 -- 2) We ask for ALL nations in the second part of the description.
  
 -- Because there are 25 nations in the database, the final result will now have 125 (5 x 25) rows, instead of 25 (5 x 5).
+
