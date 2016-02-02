@@ -8,36 +8,19 @@
 
 -- Student SQL code here:
 
--- select n_nationkey, n_name, p_partkey, p_name, sum(l_quantity) as quantity
--- from part, orders, lineitem, customer, nation
--- where n_nationkey = c_nationkey and c_custkey = o_custkey and o_orderkey = l_orderkey and l_partkey = p_partkey
--- group by n_nationkey, n_name, p_partkey, p_name
--- order by quantity desc;
-
 WITH nationPart AS 
-(select n_nationkey as np_nationkey, p_partkey as np_partkey, sum(l_quantity) as np_quantity
+(select n_nationkey as nationkey, n_name as name, p_partkey as partkey, p_name as partname, sum(l_quantity) as quantity
  from nation, orders, lineitem, customer, part
  where n_nationkey = c_nationkey and c_custkey = o_custkey and o_orderkey = l_orderkey and l_partkey = p_partkey
- group by np_nationkey, np_partkey
- order by np_quantity desc)
+ group by nationkey, name, partkey, partname)
 
-select np_nationkey, n_name, np_partkey, p_name, np_quantity 
-from nationPart, nation, part
-where np_nationkey = n_nationkey and np_partkey = p_partkey
-  and np_quantity >= (select max(np_quantity) from nationPart where np_nationkey = n_nationkey)
-group by np_quantity, n_name, np_partkey, p_name
-order by np_nationkey, np_partkey desc limit 1;
+select n.nationkey, n.name, n.partkey, n.partname, n.quantity
+from nationPart as n,
+    (select nationkey, max(quantity) as maxQuantity from nationPart group by nationkey) res
+where n.nationkey = res.nationkey and n.quantity >= res.maxQuantity
+order by n.nationkey, n.partkey;
 
 
-WITH nationPart AS 
-(select n_nationkey as np_nationkey, n_name as np_name, p_partkey as np_partkey, p_partname as np_partname, sum(l_quantity) as np_quantity
- from nation, orders, lineitem, customer, part
- where n_nationkey = c_nationkey and c_custkey = o_custkey and o_orderkey = l_orderkey and l_partkey = p_partkey
- group by np_nationkey, np_name, np_partkey, np_partname)
 
-select np_nationkey, n_name, np_partkey, p_name, np_quantity 
-from nationPart, nation, part
-where np_nationkey = n_nationkey and np_partkey = p_partkey
-  and np_quantity >= (select max(np_quantity) from nationPart where np_nationkey = n_nationkey)
-group by np_quantity, n_name, np_partkey, p_name
-order by np_nationkey, np_partkey desc limit 1;
+
+
