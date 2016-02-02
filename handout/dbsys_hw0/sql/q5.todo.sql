@@ -13,4 +13,30 @@
 
 -- Student SQL code here:
 
+WITH lastYear AS
+(select c_mktsegment as l_mktsegment, max(year) as l_year, totalOrder as l_totalOrder
+ from 
+    (
+     select c_mktsegment, cast(strftime('%Y', o_orderdate) as INTEGER) as year, count(*) as totalOrder
+       from customer join orders on c_custkey = o_custkey
+     group by c_mktsegment, year
+    )
+  group by l_mktsegment
+)
+
+select l_mktsegment, l_year, l2_year, (l_totalOrder - l2_totalOrder) as difference
+from lastYear,
+   ( -- one year before last year
+     select c_mktsegment as l2_mktsegment, cast(strftime('%Y', o_orderdate) as INTEGER) as l2_year, count(*) as l2_totalOrder
+       from customer, orders, lastYear
+      where c_custkey = o_custkey and l_mktsegment = c_mktsegment and l_year - l2_year = 1
+     group by l2_mktsegment, l2_year
+   ) as last2Year
+where l_mktsegment = l2_mktsegment and l_totalOrder - l2_totalOrder < 0
+order by l_mktsegment asc
+;
+
+
+
+
 
