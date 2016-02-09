@@ -124,12 +124,19 @@ class PageHeader:
   # tupleSize    : the tuple size in bytes
   # pageCapacity : the page size in bytes
   def __init__(self, **kwargs):
-    buffer               = kwargs.get("buffer", None)
+    """
+    Get a buffer from the parameters and store the related pageheader information in the buffer
+    starting from the freeSpaceOffset.
+    :param kwargs:
+    """
+    buffer               = kwargs.get("buffer", None)  # FIXME: can buffer be None ? Do we need to create a new buffer.
     self.flags           = kwargs.get("flags", b'\x00')
     self.tupleSize       = kwargs.get("tupleSize", None)
     self.pageCapacity    = kwargs.get("pageCapacity", len(buffer))
-    self.freeSpaceOffset = None
-    raise NotImplementedError
+    self.freeSpaceOffset = kwargs.get("freeSpaceOffset", 0)
+    buffer[self.freeSpaceOffset : self.freeSpaceOffset + self.size] = self.pack()
+    self.freeSpaceOffset += self.size
+    #raise NotImplementedError
 
   # Page header equality operation based on header fields.
   def __eq__(self, other):
@@ -142,7 +149,8 @@ class PageHeader:
     return hash((self.flags, self.tupleSize, self.pageCapacity, self.freeSpaceOffset))
 
   def headerSize(self):
-    raise NotImplementedError
+    return self.size
+    #raise NotImplementedError
 
   # Flag operations.
   def flag(self, mask):
@@ -167,26 +175,37 @@ class PageHeader:
 
   # Returns the space available in the page associated with this header.
   def freeSpace(self):
-    raise NotImplementedError
+    return self.pageCapacity - self.freeSpaceOffset
+    #raise NotImplementedError
 
   # Returns the space used in the page associated with this header.
   def usedSpace(self):
-    raise NotImplementedError
+    return self.freeSpaceOffset
+    #raise NotImplementedError
 
   # Returns whether the page has any free space for a tuple.
   def hasFreeTuple(self):
-    raise NotImplementedError
+    return self.pageCapacity - self.freeSpaceOffset >= self.tupleSize
+    #raise NotImplementedError
 
   # Returns the page offset of the next free tuple.
   # This should also "allocate" the tuple, such that any subsequent call
   # does not yield the same tupleIndex.
   def nextFreeTuple(self):
-    raise NotImplementedError
+    if self.hasFreeTuple():
+      self.freeSpaceOffset += self.tupleSize
+      return self.freeSpaceOffset - self.tupleSize
+    #raise NotImplementedError
 
   # Returns a triple of (tupleIndex, start, end) for the next free tuple.
   # This should cal nextFreeTuple()
   def nextTupleRange(self):
-    raise NotImplementedError
+    if self.hasFreeTuple():
+      tupleIndex = (self.freeSpaceOffset - self.size) / self.tupleSize + 1
+      start = self.nextFreeTuple()
+      end = start + self.tupleSize
+      return tupleIndex, start, end
+    #raise NotImplementedError
 
   # Returns a binary representation of this page header.
   def pack(self):

@@ -20,7 +20,7 @@ class FileId:
   True
   """
 
-  binrepr = struct.Struct("H")
+  binrepr = struct.Struct("H")  # unsigned short
   size    = binrepr.size
 
   def __init__(self, fileIndex):
