@@ -10,7 +10,7 @@ from Storage.Page import PageHeader, Page
 # DESIGN QUESTION 1: should this inherit from PageHeader?
 # If so, what methods can we reuse from the parent?
 #
-class SlottedPageHeader:
+class SlottedPageHeader(PageHeader):
   """
   A slotted page header implementation. This should store a slot bitmap
   implemented as a memoryview on the byte buffer backing the page
@@ -84,16 +84,33 @@ class SlottedPageHeader:
   def __init__(self, **kwargs):
     buffer     = kwargs.get("buffer", None)
     self.flags = kwargs.get("flags", b'\x00')
+
     if buffer:
-      raise NotImplementedError
+      self.pageCapacity = kwargs.get("pageCapacity", len(buffer))
+      self.tupleSize = kwargs.get("tupleSize", None)
+      self.nextSlot = 0
+      self.numSlot = 0
+      self.totSlotNum = math.floor((self.pageCapacity - 3) / (self.tupleSize + 1))
+      self.slotMap = [0 for _ in range(self.totSlotNum)]
+      fmt = "c" * (self.totSlotNum + 2)
+      self.binrepr   = struct.Struct(fmt)
+      self.reprSize  = self.binrepr.size
+      # raise NotImplementedError
     else:
       raise ValueError("No backing buffer supplied for SlottedPageHeader")
 
   def __eq__(self, other):
-    raise NotImplementedError
+    return      self.flags == other.flags \
+            and self.numSlot == other.numSlot \
+            and self.tupleSize == other.tupleSize \
+            and self.pageCapacity == other.pageCapacity \
+            and self.nextSlot == other.nextSlot \
+            and self.slotMap == other.slotMap
+    # raise NotImplementedError
 
   def __hash__(self):
-    raise NotImplementedError
+    return hash((self.flags, self.tupleSize, self.pageCapacity, self.nextSlot, tuple(self.slotMap)))
+    # raise NotImplementedError
 
   def headerSize(self):
     return self.reprSize
@@ -116,63 +133,99 @@ class SlottedPageHeader:
     self.setFlag(PageHeader.dirtyMask, dirty)
 
   def numTuples(self):
-    raise NotImplementedError
+    return sum(self.slotMap)
+    # raise NotImplementedError
 
   # Returns the space available in the page associated with this header.
   def freeSpace(self):
-    raise NotImplementedError
+    return self.pageCapacity - self.headerSize() - self.usedSpace()
+    # raise NotImplementedError
 
   # Returns the space used in the page associated with this header.
   def usedSpace(self):
-    raise NotImplementedError
+    return sum(self.slotMap) * self.tupleSize
+    # raise NotImplementedError
 
 
   # Slot operations.
   def offsetOfSlot(self, slot):
-    raise NotImplementedError
+    return self.headerSize() + slot * self.tupleSize
+    # raise NotImplementedError
 
   def hasSlot(self, slotIndex):
-    raise NotImplementedError
+    return self.slotMap[slotIndex] == 1
+    # raise NotImplementedError
 
   def getSlot(self, slotIndex):
-    raise NotImplementedError
+    buffer = self.getbuffer()
+    offset = self.headerSize() + slotIndex * self.tupleSize
+    print(slotIndex, offset)
+    return buffer[offset : offset + self.tupleSize]
+    # raise NotImplementedError
 
-  def setSlot(self, slotIndex, slot):
-    raise NotImplementedError
+  def setSlot(self, slotIndex):
+    self.slotMap[slotIndex] = 1
+    self.setDirty(True)
+    # raise NotImplementedError
 
   def resetSlot(self, slotIndex):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
-  def freeSlots(self):
-    raise NotImplementedError
+  def freeSlots(self, tupleId):
+    self.slotMap[tupleId.tupleIndex] = 0
+    self.numSlot -= 1
+    self.setDirty(True)
+    # raise NotImplementedError
 
   def usedSlots(self):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
   # Tuple allocation operations.
   
   # Returns whether the page has any free space for a tuple.
   def hasFreeTuple(self):
-    raise NotImplementedError
+    return 0 in self.slotMap
+    # raise NotImplementedError
 
   # Returns the tupleIndex of the next free tuple.
   # This should also "allocate" the tuple, such that any subsequent call
   # does not yield the same tupleIndex.
   def nextFreeTuple(self):
-    raise NotImplementedError
+    if self.nextSlot is not None:
+      self.slotMap[self.nextSlot] = 1
+      self.numSlot += 1
+      alloSlot = self.nextSlot
+      if 0 in self.slotMap:
+        self.nextSlot = self.slotMap.index(0)
+      else:
+        self.nextSlot = None
+      return alloSlot
+    # raise NotImplementedError
 
   def nextTupleRange(self):
-    raise NotImplementedError
+    if self.hasFreeTuple():
+      tupleOffset = self.nextFreeTuple() * self.tupleSize
+      tupleId = int(tupleOffset / self.tupleSize)
+      offset = tupleOffset + self.headerSize()
+      return tupleId, offset, offset + self.tupleSize
+    # raise NotImplementedError
 
   # Create a binary representation of a slotted page header.
   # The binary representation should include the slot contents.
   def pack(self):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
   # Create a slotted page header instance from a binary representation held in the given buffer.
   @classmethod
   def unpack(cls, buffer):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
+
+  def getOffset(self, tupleId):
+    return self.headerSize() + tupleId.tupleIndex * self.tupleSize
 
 
 
@@ -180,7 +233,7 @@ class SlottedPageHeader:
 # DESIGN QUESTION 2: should this inherit from Page?
 # If so, what methods can we reuse from the parent?
 #
-class SlottedPage:
+class SlottedPage(Page):
   """
   A slotted page implementation.
 
@@ -292,17 +345,17 @@ class SlottedPage:
     if buffer:
       BytesIO.__init__(self, buffer)
       self.pageId = kwargs.get("pageId", None)
-      header      = kwargs.get("header", None)
-      schema      = kwargs.get("schema", None)
+      self.header = kwargs.get("header", None)
+      self.schema = kwargs.get("schema", None)
 
-      if self.pageId and header:
-        self.header = header
+      if self.pageId and self.header:
+        self.header = self.header
       elif self.pageId:
         self.header = self.initializeHeader(**kwargs)
       else:
         raise ValueError("No page identifier provided to page constructor.")
       
-      raise NotImplementedError
+      #raise NotImplementedError
 
     else:
       raise ValueError("No backing buffer provided to page constructor.")
@@ -318,44 +371,85 @@ class SlottedPage:
 
   # Tuple iterator.
   def __iter__(self):
-    raise NotImplementedError
+    if 1 in self.header.slotMap:
+      self.iterTupleIdx = self.header.slotMap.index(1)
+    else:
+      self.iterTupleIdx = -1
+    return self
+    # raise NotImplementedError
 
   def __next__(self):
-    raise NotImplementedError
+    if self.iterTupleIdx == -1:
+      raise StopIteration
+
+    t = self.getTuple(TupleId(self.pageId, self.iterTupleIdx))
+    if t:
+      start = self.iterTupleIdx + 1
+      self.iterTupleIdx = -1
+      for i in range(start, len(self.header.slotMap)):
+        if self.header.slotMap[i] == 1:
+          self.iterTupleIdx = i
+          break
+      return t
+    else:
+      raise StopIteration
+    # raise NotImplementedError
 
   # Tuple accessor methods
 
   # Returns a byte string representing a packed tuple for the given tuple id.
   def getTuple(self, tupleId):
-    raise NotImplementedError
+    buffer = self.getbuffer()
+    offset = self.header.getOffset(tupleId)
+    return buffer[offset : offset + self.header.tupleSize]
+    # raise NotImplementedError
 
   # Updates the (packed) tuple at the given tuple id.
   def putTuple(self, tupleId, tupleData):
-    raise NotImplementedError
+    buffer = self.getbuffer()
+    offset = self.header.getOffset(tupleId)
+    buffer[offset : offset + self.header.tupleSize] = tupleData
+    # raise NotImplementedError
 
   # Adds a packed tuple to the page. Returns the tuple id of the newly added tuple.
   def insertTuple(self, tupleData):
-    raise NotImplementedError
+    buffer = self.getbuffer()
+    values = self.header.nextTupleRange()
+    if values:
+      self.header.setSlot(values[0])
+      buffer[values[1] : values[2]] = tupleData
+      return TupleId(self.pageId, values[0])
+    # raise NotImplementedError
 
   # Zeroes out the contents of the tuple at the given tuple id.
   def clearTuple(self, tupleId):
-    raise NotImplementedError
+    buffer = self.getbuffer()
+    offset = self.header.getOffset(tupleId)
+    buffer[offset : offset + self.header.tupleSize] = bytes(self.header.tupleSize)
+    self.header.setDirty(True)
+    # raise NotImplementedError
 
   # Removes the tuple at the given tuple id, shifting subsequent tuples.
   def deleteTuple(self, tupleId):
-    raise NotImplementedError
+    buffer = self.getbuffer()
+    offset = self.header.getOffset(tupleId)
+    buffer[offset : offset + self.header.tupleSize] = bytes(self.header.tupleSize)
+    self.header.freeSlots(tupleId)
+    # raise NotImplementedError
 
   # Returns a binary representation of this page.
   # This should refresh the binary representation of the page header contained
   # within the page by packing the header in place.
   def pack(self):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
   # Creates a Page instance from the binary representation held in the buffer.
   # The pageId of the newly constructed Page instance is given as an argument.
   @classmethod
   def unpack(cls, pageId, buffer):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
 
 if __name__ == "__main__":
