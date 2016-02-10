@@ -421,10 +421,11 @@ class Page(BytesIO):
   # Adds a packed tuple to the page. Returns the tuple id of the newly added tuple.
   def insertTuple(self, tupleData):
     buffer = self.getbuffer()
-    tupleId, start, end = self.header.nextTupleRange()
-    buffer[start : end] = tupleData
-    self.setDirty(True)
-    return TupleId(self.pageId, tupleId)
+    values = self.header.nextTupleRange()
+    if values:
+      buffer[values[1] : values[2]] = tupleData
+      self.setDirty(True)
+      return TupleId(self.pageId, values[0])
     #raise NotImplementedError
 
   # Zeroes out the contents of the tuple at the given tuple id.
