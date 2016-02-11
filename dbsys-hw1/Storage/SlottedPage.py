@@ -24,6 +24,8 @@ class SlottedPageHeader(PageHeader):
   >>> buffer = io.BytesIO(bytes(4096))
   >>> ph     = SlottedPageHeader(buffer=buffer.getbuffer(), tupleSize=16)
   >>> ph2    = SlottedPageHeader.unpack(buffer.getbuffer())
+  >>> ph == ph2
+  True
 
   ## Dirty bit tests
   >>> ph.isDirty()
@@ -81,24 +83,25 @@ class SlottedPageHeader(PageHeader):
   True
   """
 
+
   def __init__(self, **kwargs):
     buffer     = kwargs.get("buffer", None)
     self.flags = kwargs.get("flags", b'\x00')
 
     if buffer:
-      self.pageCapacity = kwargs.get("pageCapacity", len(buffer))
       self.tupleSize = kwargs.get("tupleSize", None)
-      self.nextSlot = 0
-      # self.numSlots = 0
-      self.numSlots = math.floor((self.pageCapacity - 3) / (self.tupleSize + 1)) # could leave more space here?
+      self.pageCapacity = kwargs.get("pageCapacity", len(buffer))
+      self.numSlots = kwargs.get("numSlots",
+                                 math.floor((self.pageCapacity - 6) / (float)(self.tupleSize + 0.125))) # could leave more space here?
+      self.nextSlot = kwargs.get("nextSlot", 0)
       self.slotMap = [0 for _ in range(self.numSlots)]
-      fmt = "cHHH" + "B" * (self.numSlots)
+      self.mapSize = math.ceil(self.numSlots/8)
+      fmt = "cHHH" + "B" * self.mapSize
       self.binrepr   = struct.Struct(fmt)
       self.reprSize  = self.binrepr.size
 
 
       packed = self.pack()
-
       buffer[0 : self.headerSize()] = packed
 
       # raise NotImplementedError
@@ -106,16 +109,16 @@ class SlottedPageHeader(PageHeader):
       raise ValueError("No backing buffer supplied for SlottedPageHeader")
 
   def __eq__(self, other):
-    return      self.flags == other.flags \
-            and self.numSlots == other.numSlot \
-            and self.tupleSize == other.tupleSize \
-            and self.pageCapacity == other.pageCapacity \
-            and self.nextSlot == other.nextSlot \
-            and self.slotMap == other.slotMap
+    return      (self.flags == other.flags
+            and self.numSlots == other.numSlots
+            and self.tupleSize == other.tupleSize
+            #and self.pageCapacity == other.pageCapacity
+            and self.nextSlot == other.nextSlot
+            and self.slotMap == other.slotMap)
     # raise NotImplementedError
 
   def __hash__(self):
-    return hash((self.flags, self.tupleSize, self.pageCapacity, self.nextSlot, tuple(self.slotMap)))
+    return hash((self.flags, self.tupleSize, self.pageCapacity, self.numSlots, self.nextSlot, tuple(self.slotMap)))
     # raise NotImplementedError
 
   def headerSize(self):
@@ -221,17 +224,50 @@ class SlottedPageHeader(PageHeader):
   # Create a binary representation of a slotted page header.
   # The binary representation should include the slot contents.
   def pack(self):
-    packed = SlottedPageHeader.binrepr.pack(self.flags, self.tupleSize, self.numSlots,
-                                            self.nextSlot)
+    packedHeader = SlottedPageHeader.binrepr.pack(self.flags,
+                                                  self.tupleSize, self.numSlots, self.nextSlot)
+    count = 0 # reset every 8 times
+    bits = 0
+
     for i in range (0, self.numSlots):
-        packed += Struct("B").pack(self.slotMap[i])
-    return packed
+      if count < 8:
+        bits += self.slotMap[i]
+        bits <<= 1
+        count += 1
+      else:
+        packedHeader += Struct("B").pack(bits)
+        count = 1
+        bits = self.slotMap[i]
+        bits <<= 1
+
+    while count < 8:
+        bits <<= 1
+        count += 1
+
+    packedHeader += Struct("B").pack(bits)
+
+    return packedHeader
     # raise NotImplementedError
 
   # Create a slotted page header instance from a binary representation held in the given buffer.
   @classmethod
   def unpack(cls, buffer):
-    pass
+    values = Struct("cHHH").unpack_from(buffer)
+    header = cls(buffer=buffer, flags=values[0], tupleSize=values[1],
+                 numSlots=values[2], nextSlot=values[3])
+
+    slotCount = 0
+    for i in range(9, header.headerSize()):
+      count = 0  # reset every 8 times
+      temp = buffer[i]
+      while count < 8 and slotCount < header.numSlots:
+        header.slotMap[slotCount] = temp & 1
+        temp >>= 1
+        count +=1
+        slotCount += 1
+
+    # header.pageCapacity = len(buffer) - header.usedSpace() - header.headerSize()
+    return header
     # raise NotImplementedError
 
   def getOffset(self, tupleId):

@@ -48,7 +48,7 @@
         <entry file="file://$PROJECT_DIR$/Storage/Page.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="369" column="0" selection-start-line="369" selection-start-column="0" selection-end-line="369" selection-end-column="0" />
+              <caret line="112" column="35" selection-start-line="112" selection-start-column="26" selection-end-line="112" selection-end-column="35" />
               <folding>
                 <element signature="e#0#22#0" expanded="true" />
               </folding>
@@ -59,8 +59,8 @@
       <file leaf-file-name="SlottedPage.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/Storage/SlottedPage.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="2.803005">
-              <caret line="446" column="26" selection-start-line="446" selection-start-column="26" selection-end-line="446" selection-end-column="26" />
+            <state vertical-scroll-proportion="4.1171327">
+              <caret line="268" column="6" selection-start-line="268" selection-start-column="6" selection-end-line="268" selection-end-column="6" />
               <folding>
                 <element signature="e#0#30#0" expanded="true" />
               </folding>
@@ -86,8 +86,8 @@
     <detection-done>true</detection-done>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="430" />
-    <option name="y" value="28" />
+    <option name="x" value="482" />
+    <option name="y" value="27" />
     <option name="width" value="881" />
     <option name="height" value="719" />
   </component>
@@ -453,7 +453,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="430" y="28" width="881" height="719" extended-state="0" />
+    <frame x="482" y="27" width="881" height="719" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.23003575" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
@@ -492,7 +492,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="python-line">
           <url>file://$PROJECT_DIR$/Storage/Page.py</url>
-          <line>131</line>
+          <line>133</line>
         </line-breakpoint>
       </breakpoints>
       <option name="time" value="1" />
@@ -561,7 +561,7 @@
     <entry file="file://$PROJECT_DIR$/Storage/Page.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="369" column="0" selection-start-line="369" selection-start-column="0" selection-end-line="369" selection-end-column="0" />
+          <caret line="112" column="35" selection-start-line="112" selection-start-column="26" selection-end-line="112" selection-end-column="35" />
           <folding>
             <element signature="e#0#22#0" expanded="true" />
           </folding>
@@ -570,8 +570,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/Storage/SlottedPage.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="2.803005">
-          <caret line="446" column="26" selection-start-line="446" selection-start-column="26" selection-end-line="446" selection-end-column="26" />
+        <state vertical-scroll-proportion="4.1171327">
+          <caret line="268" column="6" selection-start-line="268" selection-start-column="6" selection-end-line="268" selection-end-column="6" />
           <folding>
             <element signature="e#0#30#0" expanded="true" />
           </folding>
