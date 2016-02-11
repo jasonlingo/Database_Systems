@@ -24,6 +24,8 @@ class SlottedPageHeader(PageHeader):
   >>> buffer = io.BytesIO(bytes(4096))
   >>> ph     = SlottedPageHeader(buffer=buffer.getbuffer(), tupleSize=16)
   >>> ph2    = SlottedPageHeader.unpack(buffer.getbuffer())
+  >>> ph == ph2
+  True
 
   ## Dirty bit tests
   >>> ph.isDirty()
@@ -50,7 +52,7 @@ class SlottedPageHeader(PageHeader):
   >>> tuplesToTest = 10
   >>> [ph.nextFreeTuple() for i in range(0, tuplesToTest)]
   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  
+
   >>> ph.numTuples() == tuplesToTest+1
   True
 
@@ -76,40 +78,47 @@ class SlottedPageHeader(PageHeader):
   # No value is returned when trying to exceed the page capacity.
   >>> ph.nextFreeTuple() == None
   True
-  
+
   >>> ph.freeSpace() < ph.tupleSize
   True
   """
+
 
   def __init__(self, **kwargs):
     buffer     = kwargs.get("buffer", None)
     self.flags = kwargs.get("flags", b'\x00')
 
     if buffer:
-      self.pageCapacity = kwargs.get("pageCapacity", len(buffer))
       self.tupleSize = kwargs.get("tupleSize", None)
-      self.nextSlot = 0
-      self.numSlot = 0
-      self.totSlotNum = math.floor((self.pageCapacity - 3) / (self.tupleSize + 1))
-      self.slotMap = [0 for _ in range(self.totSlotNum)]
-      fmt = "c" * (self.totSlotNum + 2)
+      self.pageCapacity = kwargs.get("pageCapacity", len(buffer))
+      self.numSlots = kwargs.get("numSlots",
+                                 math.floor((self.pageCapacity - 6) / (float)(self.tupleSize + 0.125))) # could leave more space here?
+      self.nextSlot = kwargs.get("nextSlot", 0)
+      self.slotMap = [0 for _ in range(self.numSlots)]
+      self.mapSize = math.ceil(self.numSlots/8)
+      fmt = "cHHH" + "B" * self.mapSize
       self.binrepr   = struct.Struct(fmt)
       self.reprSize  = self.binrepr.size
+
+
+      packed = self.pack()
+      buffer[0 : self.headerSize()] = packed
+
       # raise NotImplementedError
     else:
       raise ValueError("No backing buffer supplied for SlottedPageHeader")
 
   def __eq__(self, other):
-    return      self.flags == other.flags \
-            and self.numSlot == other.numSlot \
-            and self.tupleSize == other.tupleSize \
-            and self.pageCapacity == other.pageCapacity \
-            and self.nextSlot == other.nextSlot \
-            and self.slotMap == other.slotMap
+    return      (self.flags == other.flags
+            and self.numSlots == other.numSlots
+            and self.tupleSize == other.tupleSize
+            #and self.pageCapacity == other.pageCapacity
+            and self.nextSlot == other.nextSlot
+            and self.slotMap == other.slotMap)
     # raise NotImplementedError
 
   def __hash__(self):
-    return hash((self.flags, self.tupleSize, self.pageCapacity, self.nextSlot, tuple(self.slotMap)))
+    return hash((self.flags, self.tupleSize, self.pageCapacity, self.numSlots, self.nextSlot, tuple(self.slotMap)))
     # raise NotImplementedError
 
   def headerSize(self):
@@ -147,7 +156,7 @@ class SlottedPageHeader(PageHeader):
     # raise NotImplementedError
 
 
-  # Slot operations.
+  # Slot operations....may need to refine in the future
   def offsetOfSlot(self, slot):
     return self.headerSize() + slot * self.tupleSize
     # raise NotImplementedError
@@ -169,21 +178,21 @@ class SlottedPageHeader(PageHeader):
     # raise NotImplementedError
 
   def resetSlot(self, slotIndex):
-    pass
+    self.slotMap[slotIndex] = 0
+    self.setDirty(True)
     # raise NotImplementedError
 
-  def freeSlots(self, tupleId):
-    self.slotMap[tupleId.tupleIndex] = 0
-    self.numSlot -= 1
+  def freeSlots(self):
+    self.slotMap = [0]*len(self.slotMap)
     self.setDirty(True)
     # raise NotImplementedError
 
   def usedSlots(self):
-    pass
+    return sum(self.slotMap)
     # raise NotImplementedError
 
   # Tuple allocation operations.
-  
+
   # Returns whether the page has any free space for a tuple.
   def hasFreeTuple(self):
     return 0 in self.slotMap
@@ -195,7 +204,7 @@ class SlottedPageHeader(PageHeader):
   def nextFreeTuple(self):
     if self.nextSlot is not None:
       self.slotMap[self.nextSlot] = 1
-      self.numSlot += 1
+      self.numSlots += 1
       alloSlot = self.nextSlot
       if 0 in self.slotMap:
         self.nextSlot = self.slotMap.index(0)
@@ -215,13 +224,50 @@ class SlottedPageHeader(PageHeader):
   # Create a binary representation of a slotted page header.
   # The binary representation should include the slot contents.
   def pack(self):
-    pass
+    packedHeader = SlottedPageHeader.binrepr.pack(self.flags,
+                                                  self.tupleSize, self.numSlots, self.nextSlot)
+    count = 0 # reset every 8 times
+    bits = 0
+
+    for i in range (0, self.numSlots):
+      if count < 8:
+        bits += self.slotMap[i]
+        bits <<= 1
+        count += 1
+      else:
+        packedHeader += Struct("B").pack(bits)
+        count = 1
+        bits = self.slotMap[i]
+        bits <<= 1
+
+    while count < 8:
+        bits <<= 1
+        count += 1
+
+    packedHeader += Struct("B").pack(bits)
+
+    return packedHeader
     # raise NotImplementedError
 
   # Create a slotted page header instance from a binary representation held in the given buffer.
   @classmethod
   def unpack(cls, buffer):
-    pass
+    values = Struct("cHHH").unpack_from(buffer)
+    header = cls(buffer=buffer, flags=values[0], tupleSize=values[1],
+                 numSlots=values[2], nextSlot=values[3])
+
+    slotCount = 0
+    for i in range(9, header.headerSize()):
+      count = 0  # reset every 8 times
+      temp = buffer[i]
+      while count < 8 and slotCount < header.numSlots:
+        header.slotMap[slotCount] = temp & 1
+        temp >>= 1
+        count +=1
+        slotCount += 1
+
+    # header.pageCapacity = len(buffer) - header.usedSpace() - header.headerSize()
+    return header
     # raise NotImplementedError
 
   def getOffset(self, tupleId):
@@ -253,6 +299,10 @@ class SlottedPage(Page):
 
   # Validate header initialization
   >>> p.header.numTuples() == 0 and p.header.usedSpace() == 0
+  True
+
+  >>> p2     = SlottedPage.unpack(pId, p.pack())
+  >>> p2.header == p.header
   True
 
   # Create and insert a tuple
@@ -302,9 +352,9 @@ class SlottedPage(Page):
 
   # Test clearing of first tuple
   >>> tId = TupleId(p.pageId, 0)
-  >>> sizeBeforeClear = p.header.usedSpace()  
+  >>> sizeBeforeClear = p.header.usedSpace()
   >>> p.clearTuple(tId)
-  
+
   >>> schema.unpack(p.getTuple(tId))
   employee(id=0, age=0)
 
@@ -321,10 +371,12 @@ class SlottedPage(Page):
 
   >>> [schema.unpack(tup).age for tup in p]
   [20, 22, 24, 26, 28, 30, 32, 34, 36, 38]
-  
+
   # Check that the page's slots have tracked the deletion.
   >>> p.header.usedSpace() == (sizeBeforeRemove - p.header.tupleSize)
   True
+
+
 
   """
 
@@ -354,7 +406,7 @@ class SlottedPage(Page):
         self.header = self.initializeHeader(**kwargs)
       else:
         raise ValueError("No page identifier provided to page constructor.")
-      
+
       #raise NotImplementedError
 
     else:
@@ -434,21 +486,25 @@ class SlottedPage(Page):
     buffer = self.getbuffer()
     offset = self.header.getOffset(tupleId)
     buffer[offset : offset + self.header.tupleSize] = bytes(self.header.tupleSize)
-    self.header.freeSlots(tupleId)
+    self.header.resetSlot(tupleId.tupleIndex)
     # raise NotImplementedError
 
   # Returns a binary representation of this page.
   # This should refresh the binary representation of the page header contained
   # within the page by packing the header in place.
   def pack(self):
-    pass
+    buffer = self.getbuffer()
+    buffer[0 : self.header.headerSize()] = self.header.pack()
+    return buffer
     # raise NotImplementedError
 
   # Creates a Page instance from the binary representation held in the buffer.
   # The pageId of the newly constructed Page instance is given as an argument.
   @classmethod
   def unpack(cls, pageId, buffer):
-    pass
+    header = SlottedPageHeader.unpack(buffer)
+    return cls(pageId=pageId , header=header, buffer=buffer)
+    # return super().unpack(cls, pageId, buffer)
     # raise NotImplementedError
 
 
