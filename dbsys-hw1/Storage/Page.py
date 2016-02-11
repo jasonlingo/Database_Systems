@@ -462,7 +462,7 @@ class Page(BytesIO):
   # The pageId of the newly constructed Page instance is given as an argument.
   @classmethod
   def unpack(cls, pageId, buffer):
-    header = PageHeader.unpack(buffer)
+    header = cls.headerClass.unpack(buffer)
     return cls(pageId=pageId , header=header, buffer=buffer)
     #raise NotImplementedError
 
