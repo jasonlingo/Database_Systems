@@ -52,7 +52,7 @@ class SlottedPageHeader(PageHeader):
   >>> tuplesToTest = 10
   >>> [ph.nextFreeTuple() for i in range(0, tuplesToTest)]
   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  
+
   >>> ph.numTuples() == tuplesToTest+1
   True
 
@@ -78,7 +78,7 @@ class SlottedPageHeader(PageHeader):
   # No value is returned when trying to exceed the page capacity.
   >>> ph.nextFreeTuple() == None
   True
-  
+
   >>> ph.freeSpace() < ph.tupleSize
   True
   """
@@ -192,7 +192,7 @@ class SlottedPageHeader(PageHeader):
     # raise NotImplementedError
 
   # Tuple allocation operations.
-  
+
   # Returns whether the page has any free space for a tuple.
   def hasFreeTuple(self):
     return 0 in self.slotMap
@@ -301,6 +301,10 @@ class SlottedPage(Page):
   >>> p.header.numTuples() == 0 and p.header.usedSpace() == 0
   True
 
+  >>> p2     = SlottedPage.unpack(pId, p.pack())
+  >>> p2.header == p.header
+  True
+
   # Create and insert a tuple
   >>> e1 = schema.instantiate(1,25)
   >>> tId = p.insertTuple(schema.pack(e1))
@@ -348,9 +352,9 @@ class SlottedPage(Page):
 
   # Test clearing of first tuple
   >>> tId = TupleId(p.pageId, 0)
-  >>> sizeBeforeClear = p.header.usedSpace()  
+  >>> sizeBeforeClear = p.header.usedSpace()
   >>> p.clearTuple(tId)
-  
+
   >>> schema.unpack(p.getTuple(tId))
   employee(id=0, age=0)
 
@@ -367,10 +371,12 @@ class SlottedPage(Page):
 
   >>> [schema.unpack(tup).age for tup in p]
   [20, 22, 24, 26, 28, 30, 32, 34, 36, 38]
-  
+
   # Check that the page's slots have tracked the deletion.
   >>> p.header.usedSpace() == (sizeBeforeRemove - p.header.tupleSize)
   True
+
+
 
   """
 
@@ -400,7 +406,7 @@ class SlottedPage(Page):
         self.header = self.initializeHeader(**kwargs)
       else:
         raise ValueError("No page identifier provided to page constructor.")
-      
+
       #raise NotImplementedError
 
     else:
@@ -487,14 +493,18 @@ class SlottedPage(Page):
   # This should refresh the binary representation of the page header contained
   # within the page by packing the header in place.
   def pack(self):
-    pass
+    buffer = self.getbuffer()
+    buffer[0 : self.header.headerSize()] = self.header.pack()
+    return buffer
     # raise NotImplementedError
 
   # Creates a Page instance from the binary representation held in the buffer.
   # The pageId of the newly constructed Page instance is given as an argument.
   @classmethod
   def unpack(cls, pageId, buffer):
-    pass
+    header = SlottedPageHeader.unpack(buffer)
+    return cls(pageId=pageId , header=header, buffer=buffer)
+    # return super().unpack(cls, pageId, buffer)
     # raise NotImplementedError
 
 
