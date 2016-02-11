@@ -262,7 +262,7 @@ class StorageFile:
     # DESIGN QUESTION: what data structure do you use to keep track of the free pages?
     self.freePages = None
     
-    raise NotImplementedError
+    #raise NotImplementedError
 
 
   # File control
@@ -290,10 +290,12 @@ class StorageFile:
     return os.path.getsize(self.filePath)
 
   def headerSize(self):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
   def numPages(self):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
   # Returns the offset in the file corresponding to the given page id.
   # Notice this assumes the header is written before the first page,
@@ -310,44 +312,53 @@ class StorageFile:
 
   # Reads a page header from disk.
   def readPageHeader(self, pageId):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
   # Writes a page header to disk.
   # The page must already exist, that is we cannot extend the file with only a page header.
   def writePageHeader(self, page):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
 
   # Page operations
 
   def readPage(self, pageId, page):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
   def writePage(self, page):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
   # Adds a new page to the file by writing past its end.
   def allocatePage(self):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
   # Returns the page id of the first page with available space.
   def availablePage(self):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
 
   # Tuple operations
 
   # Inserts the given tuple to the first available page.
   def insertTuple(self, tupleData):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
   # Removes the tuple by its id, tracking if the page is now free
   def deleteTuple(self, tupleId):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
   # Updates the tuple by id
   def updateTuple(self, tupleId, tupleData):
-    raise NotImplementedError
+    pass
+    # raise NotImplementedError
 
 
   # Iterators
