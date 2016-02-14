@@ -105,6 +105,12 @@ class PageHeader:
 
   >>> ph.freeSpace() < ph.tupleSize
   True
+
+  >>> buffer = io.BytesIO(bytes(4096))
+  >>> ph     = PageHeader(buffer=buffer.getbuffer(), tupleSize=16)
+  >>> ph2    = PageHeader.unpack(buffer.getbuffer())
+  >>> ph == ph2
+  True
   """
 
   # Binary representation of a page header:

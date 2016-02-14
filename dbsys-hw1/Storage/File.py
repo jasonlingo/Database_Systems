@@ -84,7 +84,7 @@ class FileHeader:
   @classmethod
   def binrepr(cls, buffer):
     lenStruct = Struct("HHHH")
-    (headerLen, _, pageClassLen, schemaDescLen) = lenStruct.unpack_from(buffer)
+    (headerLen, _, pageClassLen, schemaDescLen) = lenStruct.unpack_from(buffer)  # why '_' here
     if headerLen > 0 and pageClassLen > 0 and schemaDescLen > 0:
       return Struct("HHHH"+str(pageClassLen)+"s"+str(schemaDescLen)+"s")
     else:
