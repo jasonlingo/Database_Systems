@@ -137,7 +137,7 @@ class DBSchema:
   easily be created using our 'instantiate' method.
 
   >>> schema = DBSchema('employee', [('id', 'int'), ('dob', 'char(10)'), ('salary', 'int')])
-  
+
   >>> e1 = schema.instantiate(1, '1990-01-01', 100000)
   >>> e1
   employee(id=1, dob='1990-01-01', salary=100000)

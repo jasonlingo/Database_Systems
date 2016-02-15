@@ -157,7 +157,7 @@ class FileManager:
       return rFile.readPage(pageId, pageBuffer)
 
   def writePage(self, page):
-    rFile = self.fileMap.get(pageId.fileId, None) if pageId else None
+    rFile = self.fileMap.get(page.pageId.fileId, None) if page.pageId else None
     if rFile:
       return rFile.writePage(page)
 

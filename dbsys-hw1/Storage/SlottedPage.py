@@ -100,10 +100,8 @@ class SlottedPageHeader(PageHeader):
       self.binrepr   = struct.Struct(fmt)
       self.reprSize  = self.binrepr.size
 
-
       packed = self.pack()
       buffer[0 : self.headerSize()] = packed
-
       # raise NotImplementedError
     else:
       raise ValueError("No backing buffer supplied for SlottedPageHeader")
@@ -226,19 +224,21 @@ class SlottedPageHeader(PageHeader):
   def pack(self):
     packedHeader = SlottedPageHeader.binrepr.pack(self.flags,
                                                   self.tupleSize, self.numSlots, self.nextSlot)
-    count = 0 # reset every 8 times
-    bits = 0
+    count = 1 # reset every 8 times
+    bits = self.slotMap[0]
 
-    for i in range (0, self.numSlots):
+    for i in range (1, len(self.slotMap)):
       if count < 8:
-        bits += self.slotMap[i]
         bits <<= 1
+        bits += self.slotMap[i]
+
         count += 1
+        # print (count, ' ', bits)
       else:
+        #print ('num',i,' ',bits)
         packedHeader += Struct("B").pack(bits)
         count = 1
         bits = self.slotMap[i]
-        bits <<= 1
 
     while count < 8:
         bits <<= 1
@@ -376,8 +376,9 @@ class SlottedPage(Page):
   >>> p.header.usedSpace() == (sizeBeforeRemove - p.header.tupleSize)
   True
 
-
-
+  # >>> p2     = SlottedPage.unpack(pId, p.pack())
+  >>> p.pack()
+  0
   """
 
   headerClass = SlottedPageHeader
@@ -511,3 +512,13 @@ class SlottedPage(Page):
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
+    """
+    schema = DBSchema('employee', [('id', 'int'), ('age', 'int')])
+    pId    = PageId(FileId(1), 100)
+    p      = SlottedPage(pageId=pId, buffer=bytes(4096), schema=schema)
+
+    for tup in [schema.pack(schema.instantiate(i, 2*i+20)) for i in range(10)]:
+      _ = p.insertTuple(tup)
+
+    p.pack()
+    """

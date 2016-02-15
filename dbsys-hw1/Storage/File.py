@@ -1,5 +1,6 @@
 import io, math, os, os.path, pickle, struct
 from struct import Struct
+from collections import deque
 
 from Catalog.Identifiers import PageId, FileId, TupleId
 from Catalog.Schema      import DBSchema
@@ -84,8 +85,8 @@ class FileHeader:
   @classmethod
   def binrepr(cls, buffer):
     lenStruct = Struct("HHHH")
-    (headerLen, _, pageClassLen, schemaDescLen) = lenStruct.unpack_from(buffer)  # why '_' here
-    if headerLen > 0 and pageClassLen > 0 and schemaDescLen > 0:
+    (headerLen, _, pageClassLen, schemaDescLen) = lenStruct.unpack_from(buffer)  # why '_' here,
+    if headerLen > 0 and pageClassLen > 0 and schemaDescLen > 0:              # what is 'DescLen'?
       return Struct("HHHH"+str(pageClassLen)+"s"+str(schemaDescLen)+"s")
     else:
       raise ValueError("Invalid header length read from storage file header")
@@ -241,7 +242,6 @@ class StorageFile:
     self.bufferPool = kwargs.get("bufferPool", None)
     if self.bufferPool is None:
       raise ValueError("No buffer pool found when initializing a storage file")
-
     pageSize       = kwargs.get("pageSize", io.DEFAULT_BUFFER_SIZE)
     pageClass      = kwargs.get("pageClass", StorageFile.defaultPageClass)
     schema         = kwargs.get("schema", None)
@@ -250,19 +250,31 @@ class StorageFile:
     self.fileId    = kwargs.get("fileId", None)
     self.filePath  = kwargs.get("filePath", None)
 
+    self.file = open(self.filePath, 'wb+')
     ######################################################################################
     # DESIGN QUESTION: how do you initialize these?
     # The file should be opened depending on the desired mode of operation.
     # The file header may come from the file contents (i.e., if the file already exists),
     # otherwise it should be created from scratch.
-    self.header    = None
-    self.file      = None
+    if mode == "create":
+      self.header = FileHeader(pageSize=pageSize, pageClass=pageClass, schema=schema)
+      self.file.write(self.header.pack())
+    elif mode == "update":
+      pass
+    elif mode =="truncate":
+      pass
+    else:
+      raise ValueError("Wrong file open mode")
+
+
+    #self.header    = None
+    #self.file      = None
 
     ######################################################################################
     # DESIGN QUESTION: what data structure do you use to keep track of the free pages?
-    self.freePages = None
-    
-    raise NotImplementedError
+    self.freePages = deque([])
+    self.pageCount = 0
+    #raise NotImplementedError
 
 
   # File control
@@ -290,10 +302,12 @@ class StorageFile:
     return os.path.getsize(self.filePath)
 
   def headerSize(self):
-    raise NotImplementedError
+    return self.header.size
+    #raise NotImplementedError
 
   def numPages(self):
-    raise NotImplementedError
+    return self.pageCount
+    #raise NotImplementedError
 
   # Returns the offset in the file corresponding to the given page id.
   # Notice this assumes the header is written before the first page,
@@ -324,15 +338,25 @@ class StorageFile:
     raise NotImplementedError
 
   def writePage(self, page):
-    raise NotImplementedError
+    self.file.seek(self.pageOffset(page.pageId))
+    # self.file = open(self.filePath,'wb+') # Need open the file again?
+    self.file.write(page.pack())
+    #raise NotImplementedError
 
   # Adds a new page to the file by writing past its end.
   def allocatePage(self):
-    raise NotImplementedError
+    pid = PageId(self.fileId, self.pageCount)
+    p   = SlottedPage(pageId=pid, buffer=bytes(self.pageSize()), schema=self.schema())
+    self.pageCount += 1
+    self.freePages.append(pid)
+    self.writePage(p)
+    #raise NotImplementedError
 
   # Returns the page id of the first page with available space.
   def availablePage(self):
-    raise NotImplementedError
+    self.allocatePage()
+    return self.freePages.popleft()
+    #raise NotImplementedError
 
 
   # Tuple operations
