@@ -90,6 +90,18 @@ class FileManager:
     self.relationFiles = other.relationFiles
     self.fileMap       = other.fileMap
 
+  # Closes and flushes all storage files in the file manager.
+  # This includes flushing all pages held in the buffer pool.
+  def close(self):
+    if self.bufferPool:
+      self.bufferPool.clear()
+
+    if self.fileMap:
+      for storageFile in self.fileMap.values():
+        storageFile.close()
+
+    self.checkpoint()
+
   # Save the file manager internals to the data directory.
   def checkpoint(self):
     fmPath = os.path.join(self.datadir, FileManager.checkpointFile)
@@ -134,7 +146,7 @@ class FileManager:
     rFile = self.fileMap.pop(fId, None) if fId else None
     if rFile:
       rFile.close()
-      os.remove(rFile.path)
+      os.remove(rFile.filePath)
       self.checkpoint()
 
   # Removes a relation from the file manager without closing
@@ -157,7 +169,7 @@ class FileManager:
       return rFile.readPage(pageId, pageBuffer)
 
   def writePage(self, page):
-    rFile = self.fileMap.get(pageId.fileId, None) if pageId else None
+    rFile = self.fileMap.get(pageId.fileId, None) if page.pageId else None
     if rFile:
       return rFile.writePage(page)
 

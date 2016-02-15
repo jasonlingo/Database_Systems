@@ -94,16 +94,17 @@ class SlottedPageHeader(PageHeader):
       self.numSlots = kwargs.get("numSlots",
                                  math.floor((self.pageCapacity - 6) / (float)(self.tupleSize + 0.125))) # could leave more space here?
       self.nextSlot = kwargs.get("nextSlot", 0)
+      unpack = kwargs.get("unpack", False)
+
       self.slotMap = [0 for _ in range(self.numSlots)]
       self.mapSize = math.ceil(self.numSlots/8)
       fmt = "cHHH" + "B" * self.mapSize
       self.binrepr   = struct.Struct(fmt)
       self.reprSize  = self.binrepr.size
 
-
-      packed = self.pack()
-      buffer[0 : self.headerSize()] = packed
-
+      if not unpack:
+        packed = self.pack()
+        buffer[0 : self.headerSize()] = packed
       # raise NotImplementedError
     else:
       raise ValueError("No backing buffer supplied for SlottedPageHeader")
@@ -204,7 +205,7 @@ class SlottedPageHeader(PageHeader):
   def nextFreeTuple(self):
     if self.nextSlot is not None:
       self.slotMap[self.nextSlot] = 1
-      self.numSlots += 1
+      #self.numSlots += 1
       alloSlot = self.nextSlot
       if 0 in self.slotMap:
         self.nextSlot = self.slotMap.index(0)
@@ -226,26 +227,25 @@ class SlottedPageHeader(PageHeader):
   def pack(self):
     packedHeader = SlottedPageHeader.binrepr.pack(self.flags,
                                                   self.tupleSize, self.numSlots, self.nextSlot)
-    count = 0 # reset every 8 times
-    bits = 0
+    count = 1 # reset every 8 times
+    bits = self.slotMap[0]
 
-    for i in range (0, self.numSlots):
+    for i in range (1, len(self.slotMap)):
       if count < 8:
-        bits += self.slotMap[i]
         bits <<= 1
+        bits += self.slotMap[i]
         count += 1
       else:
+        #print ('bits ',bits)
         packedHeader += Struct("B").pack(bits)
         count = 1
         bits = self.slotMap[i]
-        bits <<= 1
 
     while count < 8:
         bits <<= 1
         count += 1
 
     packedHeader += Struct("B").pack(bits)
-
     return packedHeader
     # raise NotImplementedError
 
@@ -254,16 +254,15 @@ class SlottedPageHeader(PageHeader):
   def unpack(cls, buffer):
     values = Struct("cHHH").unpack_from(buffer)
     header = cls(buffer=buffer, flags=values[0], tupleSize=values[1],
-                 numSlots=values[2], nextSlot=values[3])
-
+                 numSlots=values[2], nextSlot=values[3], unpack=True)
     slotCount = 0
-    for i in range(9, header.headerSize()):
+    for i in range(8, header.headerSize()):
       count = 0  # reset every 8 times
       temp = buffer[i]
       while count < 8 and slotCount < header.numSlots:
-        header.slotMap[slotCount] = temp & 1
-        temp >>= 1
-        count +=1
+        header.slotMap[slotCount] = (temp>>(7-count)) & 1
+        #temp >>= 1
+        count += 1
         slotCount += 1
 
     # header.pageCapacity = len(buffer) - header.usedSpace() - header.headerSize()
@@ -376,8 +375,9 @@ class SlottedPage(Page):
   >>> p.header.usedSpace() == (sizeBeforeRemove - p.header.tupleSize)
   True
 
-
-
+  >>> p2     = SlottedPage.unpack(pId, p.pack())
+  >>> p2.header == p.header
+  True
   """
 
   headerClass = SlottedPageHeader
@@ -511,3 +511,13 @@ class SlottedPage(Page):
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
+    """
+    schema = DBSchema('employee', [('id', 'int'), ('age', 'int')])
+    pId    = PageId(FileId(1), 100)
+    p      = SlottedPage(pageId=pId, buffer=bytes(4096), schema=schema)
+    for tup in [schema.pack(schema.instantiate(i, 2*i+20)) for i in range(10)]:
+      _ = p.insertTuple(tup)
+    p2     = SlottedPage.unpack(pId, p.pack())
+    print(p2.header == p.header)
+    """
+

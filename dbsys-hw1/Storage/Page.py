@@ -63,8 +63,10 @@ class PageHeader:
   ## Tuple count tests
   >>> ph.hasFreeTuple()
   True
+  >>> ph.size
+  8
 
-  # First tuple allocated should be at the header boundary
+  ## First tuple allocated should be at the header boundary
   >>> ph.nextFreeTuple() == ph.headerSize()
   True
 
