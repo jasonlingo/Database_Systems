@@ -42,7 +42,8 @@ class BufferPool:
 
     ####################################################################################
     # DESIGN QUESTION: what other data structures do we need to keep in the buffer pool?
-    self.freeList     = None
+    self.freeList     = OrderedDict()
+
 
 
   def setFileManager(self, fileMgr):
@@ -54,7 +55,8 @@ class BufferPool:
     return math.floor(self.poolSize / self.pageSize)
 
   def numFreePages(self):
-    raise NotImplementedError
+    return len(self.freeList)
+    #raise NotImplementedError
 
   def size(self):
     return self.poolSize
@@ -69,12 +71,22 @@ class BufferPool:
   # Buffer pool operations
 
   def hasPage(self, pageId):
-    raise NotImplementedError
-  
-  def getPage(self, pageId):
-    raise NotImplementedError
+    return pageId in self.freeList
+    #raise NotImplementedError
 
-  # Removes a page from the page map, returning it to the free 
+  def getPage(self, pageId):
+    if not self.hasPage(pageId):
+      self.freeList.popitem()
+      page = self.fileMgr.readPage(pageId)
+      self.freeList[pageId] = page
+      self.freeList.move_to_end(pageId, last = False)
+
+    else:
+      self.freeList.move_to_end(pageId, last=False) # Pairs in orderedList is returned in LIFO order
+      return self.freeList[pageId]
+    #raise NotImplementedError
+
+  # Removes a page from the page map, returning it to the free
   # page list without flushing the page to the disk.
   def discardPage(self, pageId):
     raise NotImplementedError

@@ -20,30 +20,30 @@ class FileHeader:
   ii.  page size
   iii. a JSON-serialized schema (from DBSchema.packSchema)
 
-  >>> schema = DBSchema('employee', [('id', 'int'), ('dob', 'char(10)'), ('salary', 'int')])
-  >>> fh = FileHeader(pageSize=io.DEFAULT_BUFFER_SIZE, pageClass=SlottedPage, schema=schema)
-  >>> b = fh.pack()
-  >>> fh2 = FileHeader.unpack(b)
-  >>> fh.pageSize == fh2.pageSize
-  True
-
-  >>> fh.schema.schema() == fh2.schema.schema()
-  True
-
-  ## Test the file header's ability to be written to, and read from a Python file object.
-  >>> f1 = open('test.header', 'wb')
-  >>> fh.toFile(f1)
-  >>> f1.flush(); f1.close()
-
-  >>> f2 = open('test.header', 'r+b')
-  >>> fh3 = FileHeader.fromFile(f2)
-  >>> fh.pageSize == fh3.pageSize \
-      and fh.pageClass == fh3.pageClass \
-      and fh.schema.schema() == fh3.schema.schema()
-  True
-
-  >>> os.remove('test.header')
-  """
+  # >>> schema = DBSchema('employee', [('id', 'int'), ('dob', 'char(10)'), ('salary', 'int')])
+  # >>> fh = FileHeader(pageSize=io.DEFAULT_BUFFER_SIZE, pageClass=SlottedPage, schema=schema)
+  # >>> b = fh.pack()
+  # >>> fh2 = FileHeader.unpack(b)
+  # >>> fh.pageSize == fh2.pageSize
+  # True
+  #
+  # >>> fh.schema.schema() == fh2.schema.schema()
+  # True
+  #
+  # ## Test the file header's ability to be written to, and read from a Python file object.
+  # >>> f1 = open('test.header', 'wb')
+  # >>> fh.toFile(f1)
+  # >>> f1.flush(); f1.close()
+  #
+  # >>> f2 = open('test.header', 'r+b')
+  # >>> fh3 = FileHeader.fromFile(f2)
+  # >>> fh.pageSize == fh3.pageSize \
+  #     and fh.pageClass == fh3.pageClass \
+  #     and fh.schema.schema() == fh3.schema.schema()
+  # True
+  #
+  # >>> os.remove('test.header')
+  # """
 
   def __init__(self, **kwargs):
     other = kwargs.get("other", None) 
@@ -146,7 +146,7 @@ class StorageFile:
 
   # Create a relation for the given schema
   >>> fm.createRelation(schema.name, schema)
-  
+
   # Below 'f' is a StorageFile object returned by the FileManager
   >>> (fId, f) = fm.relationFile(schema.name)
 
@@ -181,7 +181,7 @@ class StorageFile:
   >>> f.writePage(p)
   >>> f.writePage(p1)
   >>> f.flush()
-  
+
   # Check the number of pages, and the file size.
   >>> f.numPages() == 2
   True
@@ -197,7 +197,7 @@ class StorageFile:
 
   >>> f.pageOffset(pIn1.pageId) == f.header.size + f.pageSize()
   True
-  
+
   >>> pIn = f.readPage(pId, pageBuffer)
   >>> pIn.pageId == pId
   True
@@ -272,10 +272,13 @@ class StorageFile:
 
     ######################################################################################
     # DESIGN QUESTION: what data structure do you use to keep track of the free pages?
-    self.freePages = deque([])
+
+    # compute the number of pages
+    self.pageNum = self.bufferPool.numPages()
+    self.fullPages = []
+    self.freePages = []
     self.pageCount = 0
     #raise NotImplementedError
-
 
   # File control
   def flush(self):
@@ -306,7 +309,8 @@ class StorageFile:
     #raise NotImplementedError
 
   def numPages(self):
-    return self.pageCount
+    # return self.pageCount
+    return len(self.freePages) + len(self.fullPages)
     #raise NotImplementedError
 
   # Returns the offset in the file corresponding to the given page id.
@@ -324,41 +328,62 @@ class StorageFile:
 
   # Reads a page header from disk.
   def readPageHeader(self, pageId):
-    pass
+    self.file.seek(self.pageOffset(pageId))
+    header = self.file.read(self.pageClass().headerClass.size)
+    return self.pageClass().headerClass.unpack(header)
     # raise NotImplementedError
 
   # Writes a page header to disk.
   # The page must already exist, that is we cannot extend the file with only a page header.
   def writePageHeader(self, page):
-    pass
+    self.file.seek(self.pageOffset(page.pageId))
+    self.file.write(page.header.pack())
+    self.file.flush()
     # raise NotImplementedError
 
 
   # Page operations
 
   def readPage(self, pageId, page):
-    pass
+    if not self.validPageId(pageId): return
+
+    self.file.seek(self.pageOffset(pageId))
+    page = self.file.read(self.pageSize())
+    return self.pageClass().unpack(pageId, page)
     # raise NotImplementedError
 
   def writePage(self, page):
     self.file.seek(self.pageOffset(page.pageId))
-    # self.file = open(self.filePath,'wb+') # Need open the file again?
     self.file.write(page.pack())
+    if page.header.hasFreeTuple():
+      if page.pageId.pageIndex not in self.freePages:
+        self.freePages.append(page.pageId.pageIndex)
+    else:
+      if page.pageId.pageIndex not in self.fullPages:
+        self.fullPages.append(page.pageId.pageIndex)
     #raise NotImplementedError
 
   # Adds a new page to the file by writing past its end.
   def allocatePage(self):
-    pid = PageId(self.fileId, self.pageCount)
+    # find unused page id
+    pNo = None
+    for i in range(self.pageNum):
+      if i not in self.freePages and i not in self.fullPages:
+        pNo = i
+        break
+      if pNo: break
+
+    pid = PageId(self.fileId, pNo)
     p   = SlottedPage(pageId=pid, buffer=bytes(self.pageSize()), schema=self.schema())
-    self.pageCount += 1
-    self.freePages.append(pid)
+    self.freePages.append(pNo)
     self.writePage(p)
     #raise NotImplementedError
 
   # Returns the page id of the first page with available space.
   def availablePage(self):
-    self.allocatePage()
-    return self.freePages.popleft()
+    if not self.freePages:
+      self.allocatePage()
+    return PageId(self.fileId, self.freePages[0])
     #raise NotImplementedError
 
 
@@ -366,17 +391,27 @@ class StorageFile:
 
   # Inserts the given tuple to the first available page.
   def insertTuple(self, tupleData):
-    pass
+    pId = self.availablePage()
+    page = self.bufferPool.getPage(pId)
+    page.insertTuple(tupleData)
+    if not page.header.hasFreeTuple():
+      self.freePages.remove(pId)
+      self.fullPages.append(pId)
     # raise NotImplementedError
 
   # Removes the tuple by its id, tracking if the page is now free
   def deleteTuple(self, tupleId):
-    pass
+    page = self.bufferPool.getPage(tupleId.pageId)
+    page.deleteTuple(tupleId)
+    if tupleId.pageId in self.fullPages:
+      self.fullPages.remove(tupleId.pageId)
+      self.freePages.append(tupleId.pageId)
     # raise NotImplementedError
 
   # Updates the tuple by id
   def updateTuple(self, tupleId, tupleData):
-    pass
+    page = self.bufferPool.getPage(tupleId.pageId)
+    page.putTuple(tupleId, tupleData)
     # raise NotImplementedError
 
 
@@ -485,3 +520,92 @@ class StorageFile:
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
+
+
+    ####
+    # import shutil, Storage.BufferPool, Storage.FileManager
+    # schema = DBSchema('employee', [('id', 'int'), ('age', 'int')])
+    # bp = Storage.BufferPool.BufferPool()
+    # fm = Storage.FileManager.FileManager(bufferPool=bp)
+    # bp.setFileManager(fm)
+    #
+    # # Create a relation for the given schema
+    # fm.createRelation(schema.name, schema)
+    #
+    # # Below 'f' is a StorageFile object returned by the FileManager
+    # (fId, f) = fm.relationFile(schema.name)
+    #
+    # # Check initial file status
+    # if (f.numPages() != 0):
+    #   print ("error")
+    #
+    # # There should be a valid free page data structure in the file.
+    # if (f.freePages is None):
+    #   print ("error")
+    #
+    # # The first available page should be at page offset 0.
+    # if f.availablePage().pageIndex != 0:
+    #   print ("error")
+    #
+    # # Create a pair of pages.
+    # pId  = PageId(fId, 0)
+    # pId1 = PageId(fId, 1)
+    # p    = SlottedPage(pageId=pId,  buffer=bytes(f.pageSize()), schema=schema)
+    # p1   = SlottedPage(pageId=pId1, buffer=bytes(f.pageSize()), schema=schema)
+    #
+    # # Populate pages
+    # for tup in [schema.pack(schema.instantiate(i, 2*i+20)) for i in range(10)]:
+    #     _ = p.insertTuple(tup)
+    #
+    #
+    # for tup in [schema.pack(schema.instantiate(i, i+20)) for i in range(10, 20)]:
+    #     _ = p1.insertTuple(tup)
+    #
+    #
+    # # Write out pages and sync to disk.
+    # f.writePage(p)
+    # f.writePage(p1)
+    # f.flush()
+    #
+    # # Check the number of pages, and the file size.
+    # if f.numPages() != 2:
+    #   print ("error")
+    #
+    #
+    # if f.size() != (f.headerSize() + f.pageSize() * 2):
+    #   print ("error")
+    #
+    # # Read pages in reverse order testing offset and page index.
+    # pageBuffer = bytearray(f.pageSize())
+    # pIn1 = f.readPage(pId1, pageBuffer)
+    # if pIn1.pageId != pId1:
+    #   print ("error")
+    #
+    # if f.pageOffset(pIn1.pageId) != f.header.size + f.pageSize():
+    #   print ("error")
+    #
+    # pIn = f.readPage(pId, pageBuffer)
+    # if pIn.pageId != pId:
+    #   print ("errof")
+    #
+    # if f.pageOffset(pIn.pageId) != f.header.size:
+    #   print ("error")
+    #
+    # # Test page header iterator
+    # if [p[1].usedSpace() for p in f.headers()] != [80, 80]:
+    #   print ("error")
+    #
+    # # Test page iterator
+    # if [p[1].pageId.pageIndex for p in f.pages()] != [0, 1]:
+    #   print ("error")
+    #
+    # # Test tuple iterator
+    # if [schema.unpack(tup).id for tup in f.tuples()] != list(range(20)):
+    #   print ("error")
+    #
+    # # Check buffer pool utilization
+    # if (bp.numPages() - bp.numFreePages()) != 2:
+    #   print ("error")
+
+    ## Clean up the doctest
+    #shutil.rmtree(Storage.FileManager.FileManager.defaultDataDir)

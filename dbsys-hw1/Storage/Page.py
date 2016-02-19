@@ -360,7 +360,7 @@ class Page(BytesIO):
       BytesIO.__init__(self, buffer)
       self.pageId = kwargs.get("pageId", None)
       self.header = kwargs.get("header", None)
-      self.schema = kwargs.get("schema", None)
+      schema = kwargs.get("schema", None)
 
       if self.pageId and self.header:
         self.header = self.header
