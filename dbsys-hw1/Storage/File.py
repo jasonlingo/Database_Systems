@@ -259,18 +259,22 @@ class StorageFile:
     self.fileId    = kwargs.get("fileId", None)
     self.filePath  = kwargs.get("filePath", None)
 
-    self.file = open(self.filePath, 'wb+')
+
     ######################################################################################
     # DESIGN QUESTION: how do you initialize these?
     # The file should be opened depending on the desired mode of operation.
     # The file header may come from the file contents (i.e., if the file already exists),
     # otherwise it should be created from scratch.
     self.freePages = set()
+
     if mode == "create":
+      self.file = open(self.filePath, 'wb+')
       self.header = FileHeader(pageSize=pageSize, pageClass=pageClass, schema=schema)
       # self.file.write(self.header.pack())
       self.header.toFile(self.file)
     elif mode == "update":
+      self.file = open(self.filePath, 'rb+')
+      self.header = FileHeader.fromFile(self.file)
       # self.header.fromFile(self.file)
       self.restoreFreePages()
     elif mode =="truncate":
@@ -374,7 +378,7 @@ class StorageFile:
   def writePage(self, page):
     # update tuple number before write page to avoid the origin page has been overwritten
     # and the total number of tuple is wrong
-    oldPage = self.bufferPool.getPage(page.pageId)
+    # oldPage = self.bufferPool.getPage(page.pageId)
     # if oldPage:
     #   self.header.numTuples -= oldPage.header.numTuples()
     # else:

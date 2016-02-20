@@ -82,10 +82,10 @@ class BufferPool:
         buffer = self.pool.getbuffer()[frameId:frameId + self.pageSize]
         page = self.fileMgr.readPage(pageId, buffer)
         #self.frames[pageOffset] = page
-
         self.pageMap[pageId] = page
+        return page
       else:
-        evictedPage = self.evictPage()
+        self.evictPage()
         frameId = self.freeList[0]
         buffer = self.pool.getbuffer()[frameId:frameId + self.pageSize]
         page = self.fileMgr.readPage(pageId, buffer)
@@ -104,7 +104,7 @@ class BufferPool:
   # page list without flushing the page to the disk.
   def discardPage(self, pageId):
     self.pageMap.pop(pageId)
-    self.freeList.append(pageId)
+    # self.freeList.append(pageId)
     #raise NotImplementedError
 
   def flushPage(self, pageId):
@@ -116,15 +116,19 @@ class BufferPool:
   # We implement LRU through the use of an OrderedDict, and by moving pages
   # to the end of the ordering every time it is accessed through getPage()
   def evictPage(self):
-    (pId, page) = self.pageMap.popitem()
+    pId = next (iter (self.pageMap.keys()))
     if self.pageMap[pId].isDirty():
-      self.flushPage()
-    #self.freeList.append(page)
+      self.flushPage(pId)
+    #self.freeList.append()
+    self.pageMap.popitem(last=False)
     #raise NotImplementedError
 
   # Flushes all dirty pages
   def clear(self):
-    raise NotImplementedError
+    for pid in self.pageMap:
+      if self.pageMap[pid].header.isDirty():
+        self.flushPage(pid)
+    #raise NotImplementedError
 
 if __name__ == "__main__":
     import doctest

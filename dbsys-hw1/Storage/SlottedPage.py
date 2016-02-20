@@ -470,6 +470,7 @@ class SlottedPage(Page):
     if values:
       self.header.setSlot(values[0])
       buffer[values[1] : values[2]] = tupleData
+      self.isDirty(True)
       return TupleId(self.pageId, values[0])
     # raise NotImplementedError
 
