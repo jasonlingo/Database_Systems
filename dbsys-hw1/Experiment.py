@@ -31,6 +31,7 @@ diskUsageResult = []
 exp = []
 wg = WorkloadGenerator()
 for pageClass in [Page, SlottedPage]:
+# for pageClass in [SlottedPage]:
     StorageFile.defaultPageClass = pageClass
     for pageSize in [4096, 32768]:
         for workloadMode in [1, 2, 3, 4]:
@@ -50,12 +51,7 @@ for pageClass in [Page, SlottedPage]:
                             folder_size += os.path.getsize(filename)
                             os.remove(filename)
                 print("Disk usage:", folder_size)
-                # diskUsage = (sum([os.path.getsize(f) for f in os.listdir('./data') if os.path.isfile(f)]))
-                # print([f for f in os.listdir('./data') if os.path.isfile(f)])
-                # diskUsage = (sum([os.path.getsize(f) for f in os.listdir('./data')]))
-                # print(tuples, throughput, execTime, diskUsage)
-                # print(pageClass.__name__ + ", " + str(pageSize) + ", " + str(workloadMode))
-                # print(diskusage)
+
                 throughputResult[-1].append((scaleFactor, throughput))
                 diskUsageResult[-1].append((scaleFactor, folder_size))
 
@@ -65,7 +61,7 @@ print(exp)
 plt.title("Throughput")
 fig, ax = plt.subplots(figsize=(20, 10))
 plt.xticks([0.2 * i for i in range(1, 6)])
-fig.suptitle("Disk Usage Chart")
+fig.suptitle("Throughput Chart")
 ax.set_xlabel('Scale factor')
 ax.set_ylabel('Throughput (no. of tuple / second)')
 ax.text(1, 1, "Experiment: page type, page size, workload mode")
@@ -85,6 +81,7 @@ plt.xticks([0.2 * i for i in range(1, 6)])
 fig.suptitle("Disk Usage Chart")
 ax.set_xlabel('Scale factor')
 ax.set_ylabel('Disk usage (bytes)')
+ax.text(1, 1, "Experiment: page type, page size, workload mode")
 for i in range(len(exp)):
     x = [d[0] for d in diskUsageResult[i]]
     y = [d[1] for d in diskUsageResult[i]]
