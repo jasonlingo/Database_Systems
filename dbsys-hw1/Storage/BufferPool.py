@@ -44,8 +44,10 @@ class BufferPool:
     # DESIGN QUESTION: what other data structures do we need to keep in the buffer pool?
 
     self.pageMap = OrderedDict()
-    self.frames = {i : None for i in range(0, self.poolSize, self.pageSize)}
-    self.freeList = list(self.frames.keys())
+    # self.frames = {i : None for i in range(0, self.poolSize, self.pageSize)}
+    # self.freeList = list(self.frames.keys())
+    self.frames = {}
+    self.freeList = [i for i in range(0, self.poolSize, self.pageSize)]
 
 
   def setFileManager(self, fileMgr):
@@ -81,19 +83,19 @@ class BufferPool:
         frameId = self.freeList.pop(0)
         buffer = self.pool.getbuffer()[frameId:frameId + self.pageSize]
         page = self.fileMgr.readPage(pageId, buffer)
-        #self.frames[pageOffset] = page
+        self.frames[pageId] = frameId
+
         self.pageMap[pageId] = page
-        return page
       else:
         self.evictPage()
-        frameId = self.freeList[0]
+        frameId = self.freeList.pop(0)
         buffer = self.pool.getbuffer()[frameId:frameId + self.pageSize]
         page = self.fileMgr.readPage(pageId, buffer)
 
-        self.frames[frameId] = page
+        self.frames[pageId] = frameId
 
         self.pageMap[pageId] = page
-        return page
+      return page
 
     else:
       self.pageMap.move_to_end(pageId)
@@ -104,7 +106,9 @@ class BufferPool:
   # page list without flushing the page to the disk.
   def discardPage(self, pageId):
     self.pageMap.pop(pageId)
-    # self.freeList.append(pageId)
+    frameId = self.frames[pageId]
+    del self.frames[pageId]
+    self.freeList.append(frameId)
     #raise NotImplementedError
 
   def flushPage(self, pageId):
@@ -116,19 +120,25 @@ class BufferPool:
   # We implement LRU through the use of an OrderedDict, and by moving pages
   # to the end of the ordering every time it is accessed through getPage()
   def evictPage(self):
-    pId = next (iter (self.pageMap.keys()))
-    if self.pageMap[pId].isDirty():
+    pId = next(iter(self.pageMap.keys()))
+    page = self.pageMap[pId]
+    if pId and page.isDirty():
       self.flushPage(pId)
-    #self.freeList.append()
     self.pageMap.popitem(last=False)
+    frameId = self.frames[pId]
+    del self.frames[pId]
+    self.freeList.append(frameId)
+    #self.freeList.append(page)
     #raise NotImplementedError
 
   # Flushes all dirty pages
   def clear(self):
-    for pid in self.pageMap:
-      if self.pageMap[pid].header.isDirty():
-        self.flushPage(pid)
-    #raise NotImplementedError
+    for pId in self.pageMap:
+      page = self.pageMap[pId]
+      if page.header.isDirty():
+        self.flushPage(pId)
+
+    # raise NotImplementedError
 
 if __name__ == "__main__":
     import doctest

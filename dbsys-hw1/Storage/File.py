@@ -94,7 +94,7 @@ class FileHeader:
   @classmethod
   def binrepr(cls, buffer):
     lenStruct = Struct(cls.structStr)
-    (headerLen, _, pageClassLen, schemaDescLen, numTuple) = lenStruct.unpack_from(buffer)  # why '_' here,
+    (headerLen, _, pageClassLen, schemaDescLen, numTuple, pageCount) = lenStruct.unpack_from(buffer)  # why '_' here,
     if headerLen > 0 and pageClassLen > 0 and schemaDescLen > 0:              # what is 'DescLen'?
       return Struct(cls.structStr+str(pageClassLen)+"s"+str(schemaDescLen)+"s")
     else:
@@ -141,7 +141,7 @@ class StorageFile:
 
   This implementation supports a readPage() and writePage() method, enabling I/O
   for specific pages to the backing file. Allocation of new pages is handled by the
-  underlying file system (i.e. simply write the desired page, and the file system 
+  underlying file system (i.e. simply write the desired page, and the file system
   will grow the backing file by the desired amount).
 
   Storage files may also serialize their metadata using the pack() and unpack(),
@@ -266,7 +266,6 @@ class StorageFile:
     # The file header may come from the file contents (i.e., if the file already exists),
     # otherwise it should be created from scratch.
     self.freePages = set()
-
     if mode == "create":
       self.file = open(self.filePath, 'wb+')
       self.header = FileHeader(pageSize=pageSize, pageClass=pageClass, schema=schema)
@@ -275,7 +274,6 @@ class StorageFile:
     elif mode == "update":
       self.file = open(self.filePath, 'rb+')
       self.header = FileHeader.fromFile(self.file)
-      # self.header.fromFile(self.file)
       self.restoreFreePages()
     elif mode =="truncate":
       pass
@@ -393,7 +391,8 @@ class StorageFile:
     if page.header.hasFreeTuple():
       self.freePages.add(page.pageId.pageIndex)
     else:
-      self.freePages.remove(page.pageId.pageIndex)
+      if page.pageId.pageIndex in self.freePages:
+        self.freePages.remove(page.pageId.pageIndex)
     #raise NotImplementedError
 
   # Adds a new page to the file by writing past its end.
@@ -418,10 +417,11 @@ class StorageFile:
   def insertTuple(self, tupleData):
     pId = self.availablePage()
     page = self.bufferPool.getPage(pId)
-    page.insertTuple(tupleData)
+    tupleId = page.insertTuple(tupleData)
     self.header.numTuples += 1
     if not page.header.hasFreeTuple():
       self.freePages.remove(pId.pageIndex)
+    return tupleId
     # raise NotImplementedError
 
   # Removes the tuple by its id, tracking if the page is now free
