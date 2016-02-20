@@ -45,6 +45,8 @@ class FileHeader:
   # >>> os.remove('test.header')
   # """
 
+  structStr = "HHHHHH"
+
   def __init__(self, **kwargs):
     other = kwargs.get("other", None) 
     if other:
@@ -54,18 +56,25 @@ class FileHeader:
       pageSize    = kwargs.get("pageSize", None)
       pageClass   = kwargs.get("pageClass", None)
       schema      = kwargs.get("schema", None)
+      self.numTuples = kwargs.get("numTuple", 0)
+      self.pageCount = kwargs.get("pageCount", 0)
+
+
 
       if pageSize and pageClass and schema:
         pageClassLen   = len(pickle.dumps(pageClass))
         schemaDescLen  = len(schema.packSchema())
-        self.binrepr   = Struct("HHHH"+str(pageClassLen)+"s"+str(schemaDescLen)+"s")
+        self.binrepr   = Struct(self.structStr+str(pageClassLen)+"s"+str(schemaDescLen)+"s")  # add numTuple
         self.size      = self.binrepr.size
         self.pageSize  = pageSize
         self.pageClass = pageClass
         self.schema    = schema
-
       else:
         raise ValueError("Invalid file header constructor arguments")
+
+  # def restoreUnusedPageIdx(self):
+  #   result = []
+  #   for i in range()
 
   def fromOther(self, other):
     self.binrepr   = other.binrepr
@@ -79,15 +88,15 @@ class FileHeader:
       packedPageClass = pickle.dumps(self.pageClass)
       packedSchema    = self.schema.packSchema()
       return self.binrepr.pack(self.size, self.pageSize, \
-              len(packedPageClass), len(packedSchema), \
+              len(packedPageClass), len(packedSchema), self.numTuples, self.pageCount,\
               packedPageClass, packedSchema)
 
   @classmethod
   def binrepr(cls, buffer):
-    lenStruct = Struct("HHHH")
-    (headerLen, _, pageClassLen, schemaDescLen) = lenStruct.unpack_from(buffer)  # why '_' here,
+    lenStruct = Struct(cls.structStr)
+    (headerLen, _, pageClassLen, schemaDescLen, numTuple) = lenStruct.unpack_from(buffer)  # why '_' here,
     if headerLen > 0 and pageClassLen > 0 and schemaDescLen > 0:              # what is 'DescLen'?
-      return Struct("HHHH"+str(pageClassLen)+"s"+str(schemaDescLen)+"s")
+      return Struct(cls.structStr+str(pageClassLen)+"s"+str(schemaDescLen)+"s")
     else:
       raise ValueError("Invalid header length read from storage file header")
 
@@ -95,10 +104,10 @@ class FileHeader:
   def unpack(cls, buffer):
     brepr  = cls.binrepr(buffer)
     values = brepr.unpack_from(buffer)
-    if len(values) == 6:
-      pageClass = pickle.loads(values[4])
-      schema    = DBSchema.unpackSchema(values[5])
-      return FileHeader(pageSize=values[1], pageClass=pageClass, schema=schema)
+    if len(values) == 8: # TODO: be cafeful
+      pageClass = pickle.loads(values[6])
+      schema    = DBSchema.unpackSchema(values[7])
+      return FileHeader(pageSize=values[1], pageClass=pageClass, schema=schema, numTuple=values[4])
 
   def toFile(self, f):
     pos = f.tell()
@@ -256,11 +265,14 @@ class StorageFile:
     # The file should be opened depending on the desired mode of operation.
     # The file header may come from the file contents (i.e., if the file already exists),
     # otherwise it should be created from scratch.
+    self.freePages = set()
     if mode == "create":
       self.header = FileHeader(pageSize=pageSize, pageClass=pageClass, schema=schema)
-      self.file.write(self.header.pack())
+      # self.file.write(self.header.pack())
+      self.header.toFile(self.file)
     elif mode == "update":
-      pass
+      # self.header.fromFile(self.file)
+      self.restoreFreePages()
     elif mode =="truncate":
       pass
     else:
@@ -273,12 +285,13 @@ class StorageFile:
     ######################################################################################
     # DESIGN QUESTION: what data structure do you use to keep track of the free pages?
 
-    # compute the number of pages
-    self.pageNum = self.bufferPool.numPages()
-    self.fullPages = []
-    self.freePages = []
-    self.pageCount = 0
     #raise NotImplementedError
+
+  def restoreFreePages(self):
+    for i in range(self.header.pageCount):
+      page = self.bufferPool.getPage(PageId(self.fileId, i))
+      if page.header.hasFreeTuple():
+        self.freePages.add(i)
 
   # File control
   def flush(self):
@@ -309,8 +322,8 @@ class StorageFile:
     #raise NotImplementedError
 
   def numPages(self):
-    # return self.pageCount
-    return len(self.freePages) + len(self.fullPages)
+    # return len(self.freePages) + len(self.fullPages)
+    return self.header.pageCount
     #raise NotImplementedError
 
   # Returns the offset in the file corresponding to the given page id.
@@ -329,16 +342,19 @@ class StorageFile:
   # Reads a page header from disk.
   def readPageHeader(self, pageId):
     self.file.seek(self.pageOffset(pageId))
-    header = self.file.read(self.pageClass().headerClass.size)
+    header = self.file.read(self.pageSize())
     return self.pageClass().headerClass.unpack(header)
     # raise NotImplementedError
 
   # Writes a page header to disk.
   # The page must already exist, that is we cannot extend the file with only a page header.
   def writePageHeader(self, page):
-    self.file.seek(self.pageOffset(page.pageId))
-    self.file.write(page.header.pack())
-    self.file.flush()
+    # if self.validPageId(page.pageId):
+    #   self.bufferPool.flushPage(page.pageId)
+    if page.pageId in self.freePages or page.pageId in self.fullPages:
+      self.file.seek(self.pageOffset(page.pageId))
+      self.file.write(page.header.pack())
+      self.file.flush()  # TODO
     # raise NotImplementedError
 
 
@@ -350,40 +366,45 @@ class StorageFile:
     self.file.seek(self.pageOffset(pageId))
     page = self.file.read(self.pageSize())
     return self.pageClass().unpack(pageId, page)
+    # if self.validPageId(pageId):
+    #   page = self.bufferPool.getPage(pageId)
+    #   return self.pageClass().unpack(pageId, page)
     # raise NotImplementedError
 
   def writePage(self, page):
+    # update tuple number before write page to avoid the origin page has been overwritten
+    # and the total number of tuple is wrong
+    oldPage = self.bufferPool.getPage(page.pageId)
+    # if oldPage:
+    #   self.header.numTuples -= oldPage.header.numTuples()
+    # else:
+    if page.pageId.pageIndex >= self.header.pageCount:
+      self.header.pageCount += 1
+    self.header.numTuples += page.header.numTuples()
+
+    # write page to disk
     self.file.seek(self.pageOffset(page.pageId))
     self.file.write(page.pack())
+
     if page.header.hasFreeTuple():
-      if page.pageId.pageIndex not in self.freePages:
-        self.freePages.append(page.pageId.pageIndex)
+      self.freePages.add(page.pageId.pageIndex)
     else:
-      if page.pageId.pageIndex not in self.fullPages:
-        self.fullPages.append(page.pageId.pageIndex)
+      self.freePages.remove(page.pageId.pageIndex)
     #raise NotImplementedError
 
   # Adds a new page to the file by writing past its end.
   def allocatePage(self):
-    # find unused page id
-    pNo = None
-    for i in range(self.pageNum):
-      if i not in self.freePages and i not in self.fullPages:
-        pNo = i
-        break
-      if pNo: break
-
-    pid = PageId(self.fileId, pNo)
-    p   = SlottedPage(pageId=pid, buffer=bytes(self.pageSize()), schema=self.schema())
-    self.freePages.append(pNo)
-    self.writePage(p)
+    # self.header.pageCount += 1
+    pId  = PageId(self.fileId, self.header.pageCount)
+    page = self.pageClass()(pageId=pId, buffer=bytes(self.pageSize()), schema=self.schema())
+    self.writePage(page)
     #raise NotImplementedError
 
   # Returns the page id of the first page with available space.
   def availablePage(self):
-    if not self.freePages:
+    if len(self.freePages) == 0:
       self.allocatePage()
-    return PageId(self.fileId, self.freePages[0])
+    return PageId(self.fileId, min(self.freePages))
     #raise NotImplementedError
 
 
@@ -394,26 +415,36 @@ class StorageFile:
     pId = self.availablePage()
     page = self.bufferPool.getPage(pId)
     page.insertTuple(tupleData)
+    self.header.numTuples += 1
     if not page.header.hasFreeTuple():
-      self.freePages.remove(pId)
-      self.fullPages.append(pId)
+      self.freePages.remove(pId.pageIndex)
     # raise NotImplementedError
 
   # Removes the tuple by its id, tracking if the page is now free
   def deleteTuple(self, tupleId):
-    page = self.bufferPool.getPage(tupleId.pageId)
-    page.deleteTuple(tupleId)
-    if tupleId.pageId in self.fullPages:
-      self.fullPages.remove(tupleId.pageId)
-      self.freePages.append(tupleId.pageId)
+    if tupleId:  # FIXME: why tupleId would be None?
+      page = self.bufferPool.getPage(tupleId.pageId)
+      page.deleteTuple(tupleId)
+      self.header.numTuples -= 1
+      self.freePages.add(tupleId.pageId.pageIndex)
     # raise NotImplementedError
 
   # Updates the tuple by id
   def updateTuple(self, tupleId, tupleData):
-    page = self.bufferPool.getPage(tupleId.pageId)
-    page.putTuple(tupleId, tupleData)
+    if tupleId:  # FIXME: why tupleId would be None?
+      page = self.bufferPool.getPage(tupleId.pageId)
+      page.putTuple(tupleId, tupleData)
     # raise NotImplementedError
 
+  def numTuples(self):
+    # totalTuple = 0
+    # for pId in self.freePages:
+    #   totalTuple += self.freePages[pId].header.numTuples()
+    # if self.fullPages:
+    #   fullPageTupleNum = list(self.fullPages.values())#[0].header.numTuple()
+    #   totalTuple += fullPageTupleNum * len(self.fullPages)
+    # return totalTuple
+    return self.header.numTuples
 
   # Iterators
   # Page header iterator
