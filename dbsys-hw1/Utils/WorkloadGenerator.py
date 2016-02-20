@@ -213,6 +213,7 @@ class WorkloadGenerator:
     print("Tuples: " + str(tuplesRead))
     print("Throughput: " + str(tuplesRead / (end - start)))
     print("Execution time: " + str(end - start))
+    return tuplesRead, tuplesRead / (end - start), end - start
 
   # Randomized access for 1/fraction read operations on the 
   # stored tuples for the given relations.
@@ -248,21 +249,22 @@ class WorkloadGenerator:
     print("Tuples: " + str(tuplesRead))
     print("Throughput: " + str(tuplesRead / (end - start)))
     print("Execution time: " + str(end - start))
+    return tuplesRead, tuplesRead / (end - start), end - start
 
   # Dispatch a workload mode.
   def runOperations(self, storageEngine, mode):
     if hasattr(self, 'tupleIds') and self.tupleIds:
       if mode == 1:
-        self.scanRelations(storageEngine, ['lineitem', 'orders'])
+        return self.scanRelations(storageEngine, ['lineitem', 'orders'])
 
       elif mode == 2:
-        self.randomizedOperations(storageEngine, ['lineitem', 'orders'], 0.2)
+        return self.randomizedOperations(storageEngine, ['lineitem', 'orders'], 0.2)
 
       elif mode == 3:
-        self.randomizedOperations(storageEngine, ['lineitem', 'orders'], 0.5)
+        return self.randomizedOperations(storageEngine, ['lineitem', 'orders'], 0.5)
 
       elif mode == 4:
-        self.randomizedOperations(storageEngine, ['lineitem', 'orders'], 0.8)
+        return self.randomizedOperations(storageEngine, ['lineitem', 'orders'], 0.8)
 
       else:
         raise ValueError("Invalid workload mode (expected 1-4): "+str(mode))
@@ -273,7 +275,7 @@ class WorkloadGenerator:
     storageEngine = StorageEngine(pageSize=pageSize)
     self.createRelations(storageEngine)
     self.loadDataset(storageEngine, datadir, scaleFactor)
-    self.runOperations(storageEngine, workloadMode)
+    return self.runOperations(storageEngine, workloadMode)
 
 if __name__ == "__main__":
     import doctest

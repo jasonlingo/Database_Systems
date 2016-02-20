@@ -203,14 +203,13 @@ class SlottedPageHeader(PageHeader):
   # This should also "allocate" the tuple, such that any subsequent call
   # does not yield the same tupleIndex.
   def nextFreeTuple(self):
-    if self.nextSlot is not None:
+    if self.nextSlot < self.numSlots:
       self.slotMap[self.nextSlot] = 1
-      #self.numSlots += 1
       alloSlot = self.nextSlot
       if 0 in self.slotMap:
         self.nextSlot = self.slotMap.index(0)
       else:
-        self.nextSlot = None
+        self.nextSlot = self.numSlots
       return alloSlot
     # raise NotImplementedError
 
@@ -253,6 +252,7 @@ class SlottedPageHeader(PageHeader):
   @classmethod
   def unpack(cls, buffer):
     values = Struct("cHHH").unpack_from(buffer)
+
     header = cls(buffer=buffer, flags=values[0], tupleSize=values[1],
                  numSlots=values[2], nextSlot=values[3], unpack=True)
     slotCount = 0
@@ -461,6 +461,7 @@ class SlottedPage(Page):
     buffer = self.getbuffer()
     offset = self.header.getOffset(tupleId)
     buffer[offset : offset + self.header.tupleSize] = tupleData
+    self.header.setDirty(True)
     # raise NotImplementedError
 
   # Adds a packed tuple to the page. Returns the tuple id of the newly added tuple.
@@ -470,6 +471,7 @@ class SlottedPage(Page):
     if values:
       self.header.setSlot(values[0])
       buffer[values[1] : values[2]] = tupleData
+      self.header.setDirty(True)
       return TupleId(self.pageId, values[0])
     # raise NotImplementedError
 
@@ -487,6 +489,7 @@ class SlottedPage(Page):
     offset = self.header.getOffset(tupleId)
     buffer[offset : offset + self.header.tupleSize] = bytes(self.header.tupleSize)
     self.header.resetSlot(tupleId.tupleIndex)
+    self.header.setDirty(True)
     # raise NotImplementedError
 
   # Returns a binary representation of this page.
