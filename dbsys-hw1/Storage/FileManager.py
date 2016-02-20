@@ -40,7 +40,8 @@ class FileManager:
   ['employee']
   """
 
-  defaultDataDir     = "data/"
+  # defaultDataDir     = "data/"
+  defaultDataDir     = "./data"
   defaultFileClass   = StorageFile
 
   checkpointEncoding = "latin1"
@@ -70,7 +71,7 @@ class FileManager:
         self.fileCounter   = kwargs.get("fileCounter", 0)
         self.relationFiles = kwargs.get("relationFiles", {})
         self.fileMap       = kwargs.get("fileMap", {})
-        
+
         if restoring:
           self.relationFiles = dict([(i[0], FileId(i[1])) for i in kwargs["restore"][0]])
           for i in kwargs["restore"][1]:
@@ -111,6 +112,7 @@ class FileManager:
   # Load relations from an existing data directory.
   def restore(self):
     fmPath = os.path.join(self.datadir, FileManager.checkpointFile)
+    print (fmPath) # FIXME
     with open(fmPath, 'r', encoding=FileManager.checkpointEncoding) as f:
       other = FileManager.unpack(self.bufferPool, f.read())
       self.fromOther(other)

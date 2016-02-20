@@ -203,12 +203,12 @@ class WorkloadGenerator:
   def scanRelations(self, storageEngine, relations):
     start = time.time()
     tuplesRead = 0
-    
+
     # Sequentially read through relations
     for rel in relations:
       for t in storageEngine.tuples(rel):
         tuplesRead += 1
-    
+
     end = time.time()
     print("Tuples: " + str(tuplesRead))
     print("Throughput: " + str(tuplesRead / (end - start)))

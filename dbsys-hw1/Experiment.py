@@ -25,56 +25,63 @@ color_sequence = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', '#2ca02c',
                   '#8c564b', '#c49c94', '#e377c2', '#f7b6d2', '#7f7f7f',
                   '#c7c7c7', '#bcbd22', '#dbdb8d', '#17becf', '#9edae5']
 
-plt.xlim(0, 1)
 
 throughputResult = []
 diskUsageResult = []
 exp = []
-
-# for pageClass in [Page, SlottedPage]:
-for pageClass in [SlottedPage]:
+wg = WorkloadGenerator()
+for pageClass in [Page, SlottedPage]:
     StorageFile.defaultPageClass = pageClass
-    # for pageSize in [4096, 32768]:
-    for pageSize in [4096]:
-        # for workloadMode in [1, 2, 3, 4]:
-        for workloadMode in [1]:
+    for pageSize in [4096, 32768]:
+        for workloadMode in [1, 2, 3, 4]:
+            exp.append(pageClass.__name__ + ", " + str(pageSize) + ", " + str(workloadMode))
             throughputResult.append([])
-            exp.append([])
             diskUsageResult.append([])
             for scaleFactor in [0.2 * i for i in range(1, 6)]:
+                print("-------------------------------------")
                 print("Experiment:", pageClass.__name__, scaleFactor, pageSize, workloadMode)
-                wg = WorkloadGenerator()
-                tuples, throughput, execTime = wg.runWorkload(dataDir, scaleFactor, pageSize, workloadMode)
-                diskUsage = (sum([os.path.getsize(f) for f in os.listdir('./data') if os.path.isfile(f)]))
-                print(tuples, throughput, execTime, diskUsage)
-                # expTag = (pageClass.__name__, scaleFactor, pageSize, workloadMode)
-
-                exp[-1].append(pageClass.__name__ + ", " + str(scaleFactor) + ", " + str(pageSize) + ", " + str(workloadMode))
+                (tuples, throughput, execTime) = wg.runWorkload(dataDir, scaleFactor, pageSize, workloadMode)
+                # calculate disk usage
+                folder_size = 0
+                for (path, dirs, files) in os.walk("./data"):
+                    for file in files:
+                        if file not in [".DS_Store", ]:
+                            filename = os.path.join(path, file)
+                            folder_size += os.path.getsize(filename)
+                            os.remove(filename)
+                print("Disk usage:", folder_size)
+                # diskUsage = (sum([os.path.getsize(f) for f in os.listdir('./data') if os.path.isfile(f)]))
+                # print([f for f in os.listdir('./data') if os.path.isfile(f)])
+                # diskUsage = (sum([os.path.getsize(f) for f in os.listdir('./data')]))
+                # print(tuples, throughput, execTime, diskUsage)
+                # print(pageClass.__name__ + ", " + str(pageSize) + ", " + str(workloadMode))
+                # print(diskusage)
                 throughputResult[-1].append((scaleFactor, throughput))
-                diskUsageResult[-1].append((scaleFactor, diskUsage))
+                diskUsageResult[-1].append((scaleFactor, folder_size))
+
 
 # plot throughput
+print(exp)
 plt.title("Throughput")
-plt.xticks([0.2, 0.4, 0.6, 0.8, 1.0])
-fig = plt.figure()
-fig.set_size_inches(18.5, 10.5)
-ax = fig.add_subplot(111)
+fig, ax = plt.subplots(figsize=(20, 10))
+plt.xticks([0.2 * i for i in range(1, 6)])
 fig.suptitle("Disk Usage Chart")
 ax.set_xlabel('Scale factor')
 ax.set_ylabel('Throughput (no. of tuple / second)')
+ax.text(1, 1, "Experiment: page type, page size, workload mode")
 for i in range(len(exp)):
     x = [d[0] for d in throughputResult[i]]
     y = [d[1] for d in throughputResult[i]]
     plt.plot(x, y, "-")
-    ax.text(x[-1], y[-1], exp[i])
+    ax.text(x[-1], y[-1], exp[i], size=10)
 plt.savefig('Throughput.png')
 
 plt.clf()
 
 # plot disk usage
 plt.title("Disk Usage")
-fig = plt.figure()
-ax = fig.add_subplot(111)
+fig, ax = plt.subplots(figsize=(20, 10))
+plt.xticks([0.2 * i for i in range(1, 6)])
 fig.suptitle("Disk Usage Chart")
 ax.set_xlabel('Scale factor')
 ax.set_ylabel('Disk usage (bytes)')
@@ -82,4 +89,5 @@ for i in range(len(exp)):
     x = [d[0] for d in diskUsageResult[i]]
     y = [d[1] for d in diskUsageResult[i]]
     plt.plot(x, y, "-")
+    ax.text(x[-1], y[-1], exp[i], size=10)
 plt.savefig('DiskUsage.png')
