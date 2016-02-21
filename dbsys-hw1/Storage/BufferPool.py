@@ -42,7 +42,12 @@ class BufferPool:
 
     ####################################################################################
     # DESIGN QUESTION: what other data structures do we need to keep in the buffer pool?
-    self.freeList     = None
+
+    self.pageMap = OrderedDict()
+    # self.frames = {i : None for i in range(0, self.poolSize, self.pageSize)}
+    # self.freeList = list(self.frames.keys())
+    self.frames = {}
+    self.freeList = [i for i in range(0, self.poolSize, self.pageSize)]
 
 
   def setFileManager(self, fileMgr):
@@ -54,7 +59,7 @@ class BufferPool:
     return math.floor(self.poolSize / self.pageSize)
 
   def numFreePages(self):
-    raise NotImplementedError
+    return len(self.freeList)
 
   def size(self):
     return self.poolSize
@@ -69,25 +74,71 @@ class BufferPool:
   # Buffer pool operations
 
   def hasPage(self, pageId):
-    raise NotImplementedError
-  
-  def getPage(self, pageId):
-    raise NotImplementedError
+    return pageId in self.pageMap
+    #raise NotImplementedError
 
-  # Removes a page from the page map, returning it to the free 
+  def getPage(self, pageId):
+    if not self.hasPage(pageId):
+      if self.freeList:
+        frameId = self.freeList.pop(0)
+        buffer = self.pool.getbuffer()[frameId:frameId + self.pageSize]
+        page = self.fileMgr.readPage(pageId, buffer)
+        self.frames[pageId] = frameId
+
+        self.pageMap[pageId] = page
+      else:
+        self.evictPage()
+        frameId = self.freeList.pop(0)
+        buffer = self.pool.getbuffer()[frameId:frameId + self.pageSize]
+        page = self.fileMgr.readPage(pageId, buffer)
+
+        self.frames[pageId] = frameId
+
+        self.pageMap[pageId] = page
+      return page
+
+    else:
+      self.pageMap.move_to_end(pageId)
+      return self.pageMap[pageId]
+    #raise NotImplementedError
+
+  # Removes a page from the page map, returning it to the free
   # page list without flushing the page to the disk.
   def discardPage(self, pageId):
-    raise NotImplementedError
+    self.pageMap.pop(pageId)
+    frameId = self.frames[pageId]
+    del self.frames[pageId]
+    self.freeList.append(frameId)
+    #raise NotImplementedError
 
   def flushPage(self, pageId):
-    raise NotImplementedError
+    page = self.pageMap[pageId]
+    self.fileMgr.writePage(page)
+    #raise NotImplementedError
 
-  # Evict using LRU policy. 
+  # Evict using LRU policy.
   # We implement LRU through the use of an OrderedDict, and by moving pages
   # to the end of the ordering every time it is accessed through getPage()
   def evictPage(self):
-    raise NotImplementedError
+    pId = next(iter(self.pageMap.keys()))
+    page = self.pageMap[pId]
+    if pId and page.isDirty():
+      self.flushPage(pId)
+    self.pageMap.popitem(last=False)
+    frameId = self.frames[pId]
+    del self.frames[pId]
+    self.freeList.append(frameId)
+    #self.freeList.append(page)
+    #raise NotImplementedError
 
+  # Flushes all dirty pages
+  def clear(self):
+    for pId in self.pageMap:
+      page = self.pageMap[pId]
+      if page.header.isDirty():
+        self.flushPage(pId)
+
+    # raise NotImplementedError
 
 if __name__ == "__main__":
     import doctest

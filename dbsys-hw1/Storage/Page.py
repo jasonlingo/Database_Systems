@@ -63,8 +63,10 @@ class PageHeader:
   ## Tuple count tests
   >>> ph.hasFreeTuple()
   True
+  >>> ph.size
+  8
 
-  # First tuple allocated should be at the header boundary
+  ## First tuple allocated should be at the header boundary
   >>> ph.nextFreeTuple() == ph.headerSize()
   True
 
@@ -220,6 +222,7 @@ class PageHeader:
   def unpack(cls, buffer):
     values = PageHeader.binrepr.unpack_from(buffer)
     if len(values) == 4:
+      buffer = memoryview(bytearray(buffer))
       return cls(buffer=buffer, flags=values[0], tupleSize=values[1],
                  freeSpaceOffset=values[2], pageCapacity=values[3])
 
@@ -358,7 +361,7 @@ class Page(BytesIO):
       BytesIO.__init__(self, buffer)
       self.pageId = kwargs.get("pageId", None)
       self.header = kwargs.get("header", None)
-      self.schema = kwargs.get("schema", None)
+      schema = kwargs.get("schema", None)
 
       if self.pageId and self.header:
         self.header = self.header
@@ -416,6 +419,7 @@ class Page(BytesIO):
     buffer = self.getbuffer()
     offset = self.header.headerSize() + tupleId.tupleIndex * self.header.tupleSize
     buffer[offset : offset + self.header.tupleSize] = tupleData
+    self.setDirty(True)
     #raise NotImplementedError
 
   # Adds a packed tuple to the page. Returns the tuple id of the newly added tuple.
@@ -426,6 +430,7 @@ class Page(BytesIO):
       buffer[values[1] : values[2]] = tupleData
       self.setDirty(True)
       return TupleId(self.pageId, values[0])
+    self.setDirty(True)
     #raise NotImplementedError
 
   # Zeroes out the contents of the tuple at the given tuple id.
@@ -433,6 +438,7 @@ class Page(BytesIO):
     buffer = self.getbuffer()
     offset = self.header.headerSize() + tupleId.tupleIndex * self.header.tupleSize
     buffer[offset : offset + self.header.tupleSize] = bytes(self.header.tupleSize)
+    self.setDirty(True)
     #raise NotImplementedError
 
   # Removes the tuple at the given tuple id, shifting subsequent tuples.
@@ -442,6 +448,7 @@ class Page(BytesIO):
     tailDataLength = self.header.freeSpaceOffset - (offset + self.header.tupleSize)
     buffer[offset : offset + tailDataLength] = buffer[offset + self.header.tupleSize : self.header.freeSpaceOffset]
     self.header.freeSpaceOffset -= self.header.tupleSize
+    self.setDirty(True)
     #raise NotImplementedError
 
   # Returns a binary representation of this page.
