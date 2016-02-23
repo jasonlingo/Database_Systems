@@ -112,7 +112,6 @@ class FileManager:
   # Load relations from an existing data directory.
   def restore(self):
     fmPath = os.path.join(self.datadir, FileManager.checkpointFile)
-    print (fmPath) # FIXME
     with open(fmPath, 'r', encoding=FileManager.checkpointEncoding) as f:
       other = FileManager.unpack(self.bufferPool, f.read())
       self.fromOther(other)
