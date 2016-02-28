@@ -33,19 +33,84 @@ class Union(Operator):
   # The iterator must be set up to deal with input iterators and handle both pipelined and
   # non-pipelined cases
   def __iter__(self):
-    raise NotImplementedError
+    #raise NotImplementedError
+    self.initializeOutput()
+    self.lhsIterator = iter(self.lhsPlan)
+    self.rhsIterator = iter(self.rhsPlan)
+    self.lhsFinished = False
+    self.rhsFinished = False
+
+    if not self.pipelined:
+      self.outputIterator = self.processAllPages()
+
+    return self
 
   # Method used for iteration, doing work in the process. Handle pipelined and non-pipelined cases
   def __next__(self):
-    raise NotImplementedError
+    #raise NotImplementedError
+    if self.pipelined:
+      while not(self.lhsFinished or self.rhsFinished or self.isOutputPageReady()):
+        try:
+          pageId, page = next(self.lhsIterator)
+          self.processInputPage(pageId, page)
+        except StopIteration:
+          self.lhsFinished = True
+
+        try:
+          pageId, page = next(self.rhsIterator)
+          self.processInputPage(pageId, page)
+        except StopIteration:
+          self.rhsFinished = True
+
+      return self.outputPage() # a list
+
+    else:
+      return next(self.outputIterator)
 
   # Page processing and control methods
 
   # Page-at-a-time operator processing
   # For union all, this copies over the input tuple to the output
   def processInputPage(self, pageId, page):
-    raise NotImplementedError
+    schema = self.rhsPlan.schema()
+    #if set(locals().keys()).isdisjoint(set(schema.fields)):
+    for inputTuple in page:
+        # Load tuple fields into the select expression context
+        #selectExprEnv = self.loadSchema(schema, inputTuple)
+
+        # Execute the predicate.
+        #if eval(self.selectExpr, globals(), selectExprEnv):
+      self.emitOutputTuple(inputTuple)
+    #else:
+    #  raise ValueError("Overlapping variables detected with operator schema")
+
+
 
   # Set-at-a-time operator processing
   def processAllPages(self):
-    raise NotImplementedError
+    #raise NotImplementedError
+    if self.lhsIterator is None:
+      self.lhsIterator = iter(self.lhsPlan)
+
+    if self.rhsIterator is None:
+      self.rhsIterator = iter(self.rhsPlan)
+
+    # Process all pages from the child operator.
+    try:
+      for (pageId, page) in self.lhsIterator:
+        self.processInputPage(pageId, page)
+
+      for (pageId, page) in self.rhsIterator:
+        self.processInputPage(pageId, page)
+
+        # No need to track anything but the last output page when in batch mode.
+        if self.outputPages:
+          self.outputPages = [self.outputPages[-1]]
+
+    # To support pipelined operation, processInputPage may raise a
+    # StopIteration exception during its work. We catch this and ignore in batch mode.
+    except StopIteration:
+      pass
+
+    # Return an iterator to the output relation
+    return self.storage.pages(self.relationId())

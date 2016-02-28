@@ -94,10 +94,15 @@ class Join(Operator):
 
   # Iterator abstraction for join operator.
   def __iter__(self):
-    raise NotImplementedError
+    self.initializeOutput()
+    self.lhsIterator = iter(self.lhsPlan)
+    self.rhsIterator = iter(self.rhsPlan)
+    self.outputIterator = self.processAllPages()
+    #raise NotImplementedError
 
   def __next__(self):
-    raise NotImplementedError
+    return next(self.outputIterator)
+    #raise NotImplementedError
 
   # Page-at-a-time operator processing
   def processInputPage(self, pageId, page):
@@ -160,10 +165,43 @@ class Join(Operator):
   # This method pins pages in the buffer pool during its access.
   # We track the page ids in the block to unpin them after processing the block.
   def accessPageBlock(self, bufPool, pageIterator):
-    raise NotImplementedError
+    pages = []
+    for i in range(0, bufPool.numPages() - 2):
+      pages.append(bufPool.getPageWithHit(next(pageIterator).pageId, True))
+    return pages
+    #raise NotImplementedError
 
   def blockNestedLoops(self):
-    raise NotImplementedError
+    bufferPool = self.storage.bufferPool
+    m = self.storage.bufferPool.numPages()
+
+    pageIterator = iter(self.lhsPlan)
+    allPages = self.accessPageBlock(bufferPool, pageIterator)
+
+    for i in range(0, len(allPages), m - 2):
+      #pageIterator = iter(self.lhsPlan[i, m - 2])
+      #pages = self.accessPageBlock(bufferPool, pageIterator)
+      pages = allPages[i, i + m  - 2]
+      for p in pages:
+        for lTuple in pages:
+          joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
+          for (rPageId, rhsPage) in iter(self.rhsPlan):
+            for rTuple in rhsPage:
+              # Load the RHS tuple fields.
+              joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
+
+              # Evaluate the join predicate, and output if we have a match.
+              if eval(self.joinExpr, globals(), joinExprEnv):
+                outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
+                self.emitOutputTuple(self.joinSchema.pack(outputTuple))
+
+        # No need to track anything but the last output page when in batch mode.
+        if self.outputPages:
+          self.outputPages = [self.outputPages[-1]]
+
+    # Return an iterator to the output relation
+    return self.storage.pages(self.relationId())
+    #raise NotImplementedError
 
 
   ##################################
