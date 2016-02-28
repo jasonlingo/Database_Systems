@@ -66,7 +66,7 @@ class GroupBy(Operator):
 
   # Page-at-a-time operator processing
   def processInputPage(self, pageId, page):
-    raise ValueError("Page-at-a-time processing not supported for joins")
+    raise ValueError("Page-at-a-time processing not supported for GroupBy") # FIXME: original err mesage: not supported for joins
 
   # Set-at-a-time operator processing
   def processAllPages(self):
