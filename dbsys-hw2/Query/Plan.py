@@ -1,4 +1,5 @@
 import math, random, sys
+
 from collections import deque
 
 from Catalog.Schema  import DBSchema
@@ -186,6 +187,7 @@ class PlanBuilder:
   operators compose with additional builder methods.
 
   A plan builder yields a Query.Plan instance through its finalize() method.
+
 
   >>> import Database
   >>> db = Database.Database()
