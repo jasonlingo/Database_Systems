@@ -6,6 +6,8 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="Natural_Language_Processing" />
     <orderEntry type="module" module-name="Natural_Language_Processing" />
+    <orderEntry type="module" module-name="HW3" />
+    <orderEntry type="module" module-name="HW1" />
   </component>
   <component name="TestRunnerService">
     <option name="projectConfiguration" value="Nosetests" />
