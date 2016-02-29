@@ -190,6 +190,7 @@ class PlanBuilder:
 
 
   >>> import Database
+  >>> import shutil, Storage.BufferPool, Storage.FileManager
   >>> db = Database.Database()
   >>> db.createRelation('employee', [('id', 'int'), ('age', 'int')])
   >>> schema = db.relationSchema('employee')

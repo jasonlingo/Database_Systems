@@ -95,10 +95,8 @@ class Join(Operator):
   # Iterator abstraction for join operator.
   def __iter__(self):
     self.initializeOutput()
-    self.inputIterator = iter(self.lhsPlan)
-    # self.inputFinished = False
+    self.lhsInputFinished = False
     self.outputIterator = self.processAllPages()
-
     return self
 
   def __next__(self):
@@ -153,7 +151,6 @@ class Join(Operator):
     # Return an iterator to the output relation
     return self.storage.pages(self.relationId())
 
-
   ##################################
   #
   # Block nested loops implementation
@@ -165,50 +162,50 @@ class Join(Operator):
   # This method pins pages in the buffer pool during its access.
   # We track the page ids in the block to unpin them after processing the block.
   def accessPageBlock(self, bufPool, pageIterator):
-    pageBlock = []
-    for page in pageIterator:
-      pageBlock.append(bufPool.getPage(page.pageId, True))
-    return pageBlock
+    resultPages = []
+    maxBlockSize = bufPool.numPages() - 2
+    while not (self.lhsInputFinished or bufPool.numFreePages() == 0 or maxBlockSize == 0):
+      try:
+        pageId, page = next(pageIterator)
+        resultPages.append(bufPool.getPage(pageId, True))
+        maxBlockSize -= 1
+      except StopIteration:
+        self.lhsInputFinished = True
+
+    return resultPages
 
   def blockNestedLoops(self):
     bufPool = self.storage.bufferPool
-    blockPageNum = bufPool.numPages() - 2
-    blockPages = self.buildBlockPages(bufPool, blockPageNum)
+    lhsPageIterator = iter(self.lhsPlan)
+    pageBlock = self.accessPageBlock(bufPool, lhsPageIterator)
 
-    for blockPage in blockPages:
-      pages = self.accessPageBlock(bufPool, blockPage)
-      for page in pages:
-        for lTuple in page:
+    while pageBlock:
+      for lhsPage in pageBlock:
+        for lTuple in lhsPage:
+          # Load the lhs once per inner loop.
           joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
 
           for (rPageId, rhsPage) in iter(self.rhsPlan):
             for rTuple in rhsPage:
-              # Load the rhs once per inner loop.
+              # Load the RHS tuple fields.
               joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
 
               # Evaluate the join predicate, and output if we have a match.
               if eval(self.joinExpr, globals(), joinExprEnv):
                 outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
                 self.emitOutputTuple(self.joinSchema.pack(outputTuple))
-        bufPool.unpinPage(page.pageId)
 
-      # No need to track anything but the last output page when in batch mode.
-      if self.outputPages:
-        self.outputPages = [self.outputPages[-1]]
+          # No need to track anything but the last output page when in batch mode.
+          if self.outputPages:
+            self.outputPages = [self.outputPages[-1]]
+
+        bufPool.unpinPage(lhsPage.pageId)
+
+      # get next block of pages
+      pageBlock = self.accessPageBlock(bufPool, lhsPageIterator)
 
     # Return an iterator to the output relation
     return self.storage.pages(self.relationId())
-
-  def buildBlockPages(self, bufPool, blockPageNum):  #FIXME: modify it using index
-    blockPages = [[]]
-    pageNum = 0
-    for pageId, page in iter(self.lhsPlan):
-      if pageNum == blockPageNum:
-        blockPages.append([])
-        pageNum = 0
-      blockPages[-1].append(page)
-      pageNum += 1
-    return blockPages
 
   ##################################
   #
