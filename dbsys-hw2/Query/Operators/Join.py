@@ -96,7 +96,7 @@ class Join(Operator):
   def __iter__(self):
     self.initializeOutput()
     self.inputIterator = iter(self.lhsPlan)
-    self.inputFinished = False
+    # self.inputFinished = False
     self.outputIterator = self.processAllPages()
 
     return self
@@ -143,7 +143,6 @@ class Join(Operator):
 
             # Evaluate the join predicate, and output if we have a match.
             if eval(self.joinExpr, globals(), joinExprEnv):
-              print (self.joinSchema)
               outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
               self.emitOutputTuple(self.joinSchema.pack(outputTuple))
 
@@ -166,14 +165,10 @@ class Join(Operator):
   # This method pins pages in the buffer pool during its access.
   # We track the page ids in the block to unpin them after processing the block.
   def accessPageBlock(self, bufPool, pageIterator):
-    resultPages = []
+    pageBlock = []
     for page in pageIterator:
-      resultPages.append(bufPool.getPage(page.pageId, True))
-    return resultPages
-
-  def unPinPage(self, bufPool, pages):
-    for page in pages:
-      bufPool.unpinPage(page.pageId)
+      pageBlock.append(bufPool.getPage(page.pageId, True))
+    return pageBlock
 
   def blockNestedLoops(self):
     bufPool = self.storage.bufferPool
@@ -182,24 +177,21 @@ class Join(Operator):
 
     for blockPage in blockPages:
       pages = self.accessPageBlock(bufPool, blockPage)
-      tupleExp = self.buildTupleDict(pages)
-
       for page in pages:
         for lTuple in page:
           joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
 
           for (rPageId, rhsPage) in iter(self.rhsPlan):
             for rTuple in rhsPage:
-              # Load the lhs once per inner loop.
+              # Load the rhs once per inner loop.
               joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
 
               # Evaluate the join predicate, and output if we have a match.
-              print (eval(self.joinExpr, globals(), joinExprEnv))
               if eval(self.joinExpr, globals(), joinExprEnv):
                 outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
                 self.emitOutputTuple(self.joinSchema.pack(outputTuple))
+        bufPool.unpinPage(page.pageId)
 
-      self.unPinPage(bufPool, pages)
       # No need to track anything but the last output page when in batch mode.
       if self.outputPages:
         self.outputPages = [self.outputPages[-1]]
@@ -217,16 +209,6 @@ class Join(Operator):
       blockPages[-1].append(page)
       pageNum += 1
     return blockPages
-
-  def buildTupleDict(self, pages):
-    tupleExp = {}
-    for page in pages:
-      for tuple in page:
-        print (self.loadSchema(self.lhsSchema, tuple))
-        tupleExp.update(self.loadSchema(self.lhsSchema, tuple))
-    print ("final dict", tupleExp)
-    return tupleExp
-
 
   ##################################
   #

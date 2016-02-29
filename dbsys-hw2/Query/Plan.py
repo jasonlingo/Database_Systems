@@ -318,6 +318,9 @@ class PlanBuilder:
   >>> estimatedSize > 0
   True
 
+  # Clean up the doctest
+  >>> shutil.rmtree(Storage.FileManager.FileManager.defaultDataDir)
+
   """
 
   def __init__(self, **kwargs):
