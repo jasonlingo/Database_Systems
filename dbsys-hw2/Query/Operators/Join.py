@@ -178,7 +178,7 @@ class Join(Operator):
       except StopIteration:
         pageBlocks.append(resultPages)
         return pageBlocks
-      pageBlocks.append((resultPages))
+      pageBlocks.append(resultPages)
 
   def blockNestedLoops(self):
     bufPool = self.storage.bufferPool
@@ -205,27 +205,6 @@ class Join(Operator):
 
     # Return an iterator to the output relation
     return self.storage.pages(self.relationId())
-
-  # def buildBlockPages(self, bufPool, blockPageNum):  #FIXME: modify it using index
-  #   blockPages = [[]]
-  #   pageNum = 0
-  #   for pageId, page in iter(self.lhsPlan):
-  #     if pageNum == blockPageNum:
-  #       blockPages.append([])
-  #       pageNum = 0
-  #     blockPages[-1].append(page)
-  #     pageNum += 1
-  #   return blockPages
-
-  # def buildTupleDict(self, pages):
-  #   tupleExp = {}
-  #   for page in pages:
-  #     for tuple in page:
-  #       print (self.loadSchema(self.lhsSchema, tuple))
-  #       tupleExp.update(self.loadSchema(self.lhsSchema, tuple))
-  #   print ("final dict", tupleExp)
-  #   return tupleExp
-
 
   ##################################
   #
