@@ -167,25 +167,25 @@ class Join(Operator):
   # We track the page ids in the block to unpin them after processing the block.
   def accessPageBlock(self, bufPool, pageIterator):
     resultPages = []
-    for page in pageIterator:
-      resultPages.append(bufPool.getPage(page.pageId, True))
-    return resultPages
-
-  def unPinPage(self, bufPool, pages):
-    for page in pages:
-      bufPool.unpinPage(page.pageId)
+    pageBlocks = []
+    while True:
+      try:
+        for i in range(bufPool.numFreePages() - 2):
+          (pageId, page) = next(pageIterator)
+          bufPool.getPage(pageId, pinned=True)
+          bufPool.pinPage(pageId)
+          resultPages.append(pageId)
+      except StopIteration:
+        pageBlocks.append(resultPages)
+        return pageBlocks
+      pageBlocks.append((resultPages))
 
   def blockNestedLoops(self):
     bufPool = self.storage.bufferPool
-    blockPageNum = bufPool.numPages() - 2
-    blockPages = self.buildBlockPages(bufPool, blockPageNum)
-
-    for blockPage in blockPages:
-      pages = self.accessPageBlock(bufPool, blockPage)
-      tupleExp = self.buildTupleDict(pages)
-
-      for page in pages:
-        for lTuple in page:
+    for blockPages in self.accessPageBlock(bufPool, iter(self.lhsPlan)):
+      for blockPageId in blockPages:
+        lhsPage = bufPool.getPage(blockPageId)
+        for lTuple in lhsPage:
           joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
 
           for (rPageId, rhsPage) in iter(self.rhsPlan):
@@ -194,38 +194,37 @@ class Join(Operator):
               joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
 
               # Evaluate the join predicate, and output if we have a match.
-              print (eval(self.joinExpr, globals(), joinExprEnv))
               if eval(self.joinExpr, globals(), joinExprEnv):
                 outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
                 self.emitOutputTuple(self.joinSchema.pack(outputTuple))
 
-      self.unPinPage(bufPool, pages)
-      # No need to track anything but the last output page when in batch mode.
+      # self.unPinPage(bufPool, pages)
+      # bufPool.clear() FIXME: clean the buffer pool
       if self.outputPages:
         self.outputPages = [self.outputPages[-1]]
 
     # Return an iterator to the output relation
     return self.storage.pages(self.relationId())
 
-  def buildBlockPages(self, bufPool, blockPageNum):  #FIXME: modify it using index
-    blockPages = [[]]
-    pageNum = 0
-    for pageId, page in iter(self.lhsPlan):
-      if pageNum == blockPageNum:
-        blockPages.append([])
-        pageNum = 0
-      blockPages[-1].append(page)
-      pageNum += 1
-    return blockPages
+  # def buildBlockPages(self, bufPool, blockPageNum):  #FIXME: modify it using index
+  #   blockPages = [[]]
+  #   pageNum = 0
+  #   for pageId, page in iter(self.lhsPlan):
+  #     if pageNum == blockPageNum:
+  #       blockPages.append([])
+  #       pageNum = 0
+  #     blockPages[-1].append(page)
+  #     pageNum += 1
+  #   return blockPages
 
-  def buildTupleDict(self, pages):
-    tupleExp = {}
-    for page in pages:
-      for tuple in page:
-        print (self.loadSchema(self.lhsSchema, tuple))
-        tupleExp.update(self.loadSchema(self.lhsSchema, tuple))
-    print ("final dict", tupleExp)
-    return tupleExp
+  # def buildTupleDict(self, pages):
+  #   tupleExp = {}
+  #   for page in pages:
+  #     for tuple in page:
+  #       print (self.loadSchema(self.lhsSchema, tuple))
+  #       tupleExp.update(self.loadSchema(self.lhsSchema, tuple))
+  #   print ("final dict", tupleExp)
+  #   return tupleExp
 
 
   ##################################
