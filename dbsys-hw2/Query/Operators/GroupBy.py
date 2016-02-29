@@ -59,18 +59,34 @@ class GroupBy(Operator):
 
   # Iterator abstraction for selection operator.
   def __iter__(self):
-    raise NotImplementedError
+    self.initializeOutput()
+    self.partitionFiles = {}
+    self.outputIterator = self.processAllPages()
+    return self
 
   def __next__(self):
-    raise NotImplementedError
+    return next(self.outputIterator)
 
   # Page-at-a-time operator processing
   def processInputPage(self, pageId, page):
-    raise ValueError("Page-at-a-time processing not supported for GroupBy") # FIXME: original err mesage: not supported for joins
+    raise ValueError("Page-at-a-time processing not supported for GroupBy")
 
   # Set-at-a-time operator processing
   def processAllPages(self):
-    raise NotImplementedError
+    # create parition according to the given hashing group key
+    for pageId, page in iter(self.subPlan):
+      print("---------------------------")
+      print ([self.groupExpr(self.subSchema.unpack(tuple)) for tuple in page])
+      # groupId = map(self.groupHashFn, )
+
+
+
+
+    return self.storage.pages(self.relationId())
+
+
+  def emitTupleToGroup(self, groupId, tuple):
+    pass
 
   # Plan and statistics information
 

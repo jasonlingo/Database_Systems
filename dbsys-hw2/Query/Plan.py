@@ -190,6 +190,7 @@ class PlanBuilder:
 
 
   >>> import Database
+  >>> import shutil, Storage.BufferPool, Storage.FileManager
   >>> db = Database.Database()
   >>> db.createRelation('employee', [('id', 'int'), ('age', 'int')])
   >>> schema = db.relationSchema('employee')
@@ -317,6 +318,9 @@ class PlanBuilder:
   >>> estimatedSize = query8.sample(10)
   >>> estimatedSize > 0
   True
+
+  # Clean up the doctest
+  >>> shutil.rmtree(Storage.FileManager.FileManager.defaultDataDir)
 
   """
 
