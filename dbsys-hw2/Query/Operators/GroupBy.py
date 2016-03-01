@@ -75,18 +75,37 @@ class GroupBy(Operator):
   def processAllPages(self):
     # create parition according to the given hashing group key
     for pageId, page in iter(self.subPlan):
-      print("---------------------------")
-      print ([self.groupExpr(self.subSchema.unpack(tuple)) for tuple in page])
-      # groupId = map(self.groupHashFn, )
-
-
+      for tupleData in page:
+        groupId = self.groupHashFn(self.toTuple(self.subSchema.unpack(tupleData)))
+        self.emitTupleToGroup(groupId, tupleData)
+      # groupExps = [self.toTuple(self.subSchema.unpack(tup)) for tup in page]
+      # groupIds = set((map(self.groupHashFn, groupExps)))
+      # for groupId in groupIds:
+      #   if groupId not in self.partitionFiles:
+      #     self.partitionFiles[groupId] = self.createPartitionFile(groupId)
 
 
     return self.storage.pages(self.relationId())
 
+  def toTuple(self, x):
+    return x if isinstance(x, tuple) else (x,)
 
-  def emitTupleToGroup(self, groupId, tuple):
-    pass
+  def createPartitionFile(self, groupId):
+    relId = self.relationId() + "_tmp_" + groupId
+
+    if self.storage.hasRelation(relId):
+      self.storage.removeRelation(relId)
+
+    self.storage.createRelation(relId, self.schema())
+    self.tempFile = self.storage.fileMgr.relationFile(relId)[1]
+    self.partitionFiles[groupId] = relId
+
+  def emitTupleToGroup(self, groupId, tupleData):
+    paritionId = self.partitionFiles.get(groupId, None)
+    if not paritionId:
+      self.createPartitionFile(groupId)
+
+    
 
   # Plan and statistics information
 
