@@ -59,18 +59,73 @@ class GroupBy(Operator):
 
   # Iterator abstraction for selection operator.
   def __iter__(self):
-    raise NotImplementedError
+    self.initializeOutput()
+    self.partitionFiles = {}
+    self.outputIterator = self.processAllPages()
+    return self
 
   def __next__(self):
-    raise NotImplementedError
+    return next(self.outputIterator)
 
   # Page-at-a-time operator processing
   def processInputPage(self, pageId, page):
-    raise ValueError("Page-at-a-time processing not supported for GroupBy") # FIXME: original err mesage: not supported for joins
+    raise ValueError("Page-at-a-time processing not supported for GroupBy")
 
   # Set-at-a-time operator processing
   def processAllPages(self):
-    raise NotImplementedError
+    # create parition according to the given hashing group key
+    # assign tuple to a partition according to the hashed key value
+    for pageId, page in iter(self.subPlan):
+      for tupleData in page:
+        key = self.groupExpr(self.subSchema.unpack(tupleData))
+        groupId = self.groupHashFn(self.toTuple(key))
+        self.emitTupleToGroup(groupId, tupleData)
+
+    # aggregate data within every group
+    aggrData = {}
+    for relId in self.partitionFiles.values():
+      partitionFile = self.storage.fileMgr.relationFile(relId)[1]
+      for _, page in partitionFile.pages():
+        for tuple in page:
+          tupleData = self.subSchema.unpack(tuple)
+          key = self.groupExpr(tupleData)
+          if key in aggrData:
+            temp = aggrData[key]
+            aggrData[key] = [self.aggExprs[i][1](temp, tupleData)\
+                             for i in range(len(self.aggExprs))]
+          else:
+            aggrData[key] = [ self.aggExprs[i][1](self.aggExprs[i][0], tupleData) \
+                             for i in range(len(self.aggExprs))]
+
+    for e in aggrData:
+      outputTuple = self.outputSchema.instantiate(e, aggrData[e][0], aggrData[e][1])
+      self.emitOutputTuple(self.outputSchema.pack(outputTuple))
+
+    # TODO: clear temporary files?
+    return self.storage.pages(self.relationId())
+
+  def toTuple(self, x):
+    return x if isinstance(x, tuple) else (x,)
+
+  def createPartitionFile(self, groupId):
+    relId = self.relationId() + "_tmp_" + str(groupId)
+
+    if self.storage.hasRelation(relId):
+      self.storage.removeRelation(relId)
+
+    self.storage.createRelation(relId, self.subSchema)
+    self.partitionFiles[groupId] = relId
+
+  def emitTupleToGroup(self, groupId, tupleData):
+    relId = self.partitionFiles.get(groupId, None)
+    if not relId:
+      self.createPartitionFile(groupId)
+      relId = self.partitionFiles[groupId]
+
+    _, partitionFile = self.storage.fileMgr.relationFile(relId)
+    pageId = partitionFile.availablePage()
+    page = self.storage.bufferPool.getPage(pageId)
+    page.insertTuple(tupleData)
 
   # Plan and statistics information
 
