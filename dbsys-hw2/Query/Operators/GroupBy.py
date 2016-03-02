@@ -71,18 +71,37 @@ class GroupBy(Operator):
   def processInputPage(self, pageId, page):
     raise ValueError("Page-at-a-time processing not supported for GroupBy")
 
+  def processAggExpr(self):
+    initValues = []
+    funcs = []
+    finals = []
+    for e in self.aggExprs:
+      initValues.append(e[0])
+      funcs.append(e[1])
+      finals.append(e[2])
+
+    pass
+
   # Set-at-a-time operator processing
   def processAllPages(self):
     # create parition according to the given hashing group key
+    # assign tuple to a partition according to the hashed key value
     for pageId, page in iter(self.subPlan):
       for tupleData in page:
-        groupId = self.groupHashFn(self.toTuple(self.subSchema.unpack(tupleData)))
+        key = self.groupExpr(self.subSchema.unpack(tupleData))
+        groupId = self.groupHashFn(self.toTuple(key))
         self.emitTupleToGroup(groupId, tupleData)
-      # groupExps = [self.toTuple(self.subSchema.unpack(tup)) for tup in page]
-      # groupIds = set((map(self.groupHashFn, groupExps)))
-      # for groupId in groupIds:
-      #   if groupId not in self.partitionFiles:
-      #     self.partitionFiles[groupId] = self.createPartitionFile(groupId)
+
+    # aggregate data within every group
+    aggregateData = {}
+    for relId in self.partitionFiles.values():
+      print("-------------------------------")
+      partitionFile = self.storage.fileMgr.relationFile(relId)[1]
+      for _, page in partitionFile.pages():
+        for tupleData in page:
+          self.subSchema.unpack(tupleData)
+
+
 
 
     return self.storage.pages(self.relationId())
@@ -91,21 +110,24 @@ class GroupBy(Operator):
     return x if isinstance(x, tuple) else (x,)
 
   def createPartitionFile(self, groupId):
-    relId = self.relationId() + "_tmp_" + groupId
+    relId = self.relationId() + "_tmp_" + str(groupId)
 
     if self.storage.hasRelation(relId):
       self.storage.removeRelation(relId)
 
-    self.storage.createRelation(relId, self.schema())
-    self.tempFile = self.storage.fileMgr.relationFile(relId)[1]
+    self.storage.createRelation(relId, self.subSchema)
     self.partitionFiles[groupId] = relId
 
   def emitTupleToGroup(self, groupId, tupleData):
-    paritionId = self.partitionFiles.get(groupId, None)
-    if not paritionId:
+    relId = self.partitionFiles.get(groupId, None)
+    if not relId:
       self.createPartitionFile(groupId)
+      relId = self.partitionFiles[groupId]
 
-    
+    _, partitionFile = self.storage.fileMgr.relationFile(relId)
+    pageId = partitionFile.availablePage()
+    page = self.storage.bufferPool.getPage(pageId)
+    page.insertTuple(tupleData)
 
   # Plan and statistics information
 
