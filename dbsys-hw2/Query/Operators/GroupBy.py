@@ -74,13 +74,13 @@ class GroupBy(Operator):
   def processAggExpr(self):
     initValues = []
     funcs = []
-    finals = []
+    finalFuncs = []
     for e in self.aggExprs:
       initValues.append(e[0])
       funcs.append(e[1])
-      finals.append(e[2])
-
-    pass
+      finalFuncs.append(e[2])
+    # print (initValues, funcs, finals)
+    return initValues, funcs, finalFuncs
 
   # Set-at-a-time operator processing
   def processAllPages(self):
@@ -88,21 +88,35 @@ class GroupBy(Operator):
     # assign tuple to a partition according to the hashed key value
     for pageId, page in iter(self.subPlan):
       for tupleData in page:
-        key = self.groupExpr(self.subSchema.unpack(tupleData))
-        groupId = self.groupHashFn(self.toTuple(key))
+        key = list(map(self.groupExpr, [self.subSchema.unpack(tupleData)]))[0]
+        groupId = list(map(self.groupHashFn, [self.toTuple(key)]))[0]
         self.emitTupleToGroup(groupId, tupleData)
 
     # aggregate data within every group
     aggregateData = {}
+    initValues, funcs, finalFuncs = self.processAggExpr()
     for relId in self.partitionFiles.values():
-      print("-------------------------------")
       partitionFile = self.storage.fileMgr.relationFile(relId)[1]
       for _, page in partitionFile.pages():
         for tupleData in page:
-          self.subSchema.unpack(tupleData)
+          unpackTuple = self.subSchema.unpack(tupleData)
+          key = list(map(self.groupExpr, [unpackTuple]))[0]
+          if key not in aggregateData:
+            aggregateData[key] = initValues[:]
+          for i in range(len(funcs)):
+            aggregateData[key][i] = list(map(funcs[i], [aggregateData[key][i]], [unpackTuple]))[0]
 
+    for key in aggregateData:
+      for i in range(len(finalFuncs)):
+        aggregateData[key][i] = list(map(finalFuncs[i], [aggregateData[key][i]]))[0]
+      newTuple = self.outputSchema.instantiate(key, aggregateData[key][0], aggregateData[key][1])
+      self.emitOutputTuple(self.outputSchema.pack(newTuple))
 
+    # TODO: delete temp partition files
 
+    # No need to track anything but the last output page when in batch mode.
+    if self.outputPages:
+      self.outputPages = [self.outputPages[-1]]
 
     return self.storage.pages(self.relationId())
 
