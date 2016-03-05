@@ -101,7 +101,6 @@ class GroupBy(Operator):
       outputTuple = self.outputSchema.instantiate(e, aggrData[e][0], aggrData[e][1])
       self.emitOutputTuple(self.outputSchema.pack(outputTuple))
 
-    # TODO: clear temporary files?
     return self.storage.pages(self.relationId())
 
   def toTuple(self, x):

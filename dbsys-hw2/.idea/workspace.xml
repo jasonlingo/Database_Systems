@@ -21,25 +21,13 @@
     <favorites_list name="dbsys-hw2" />
   </component>
   <component name="FileEditorManager">
-    <splitter split-orientation="horizontal" split-proportion="0.5420032">
+    <splitter split-orientation="horizontal" split-proportion="0.32390952">
       <split-first>
         <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-          <file leaf-file-name="Join.py" pinned="false" current-in-tab="true">
-            <entry file="file://$PROJECT_DIR$/Query/Operators/Join.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.025167786">
-                  <caret line="25" column="2" selection-start-line="25" selection-start-column="2" selection-end-line="25" selection-end-column="2" />
-                  <folding>
-                    <element signature="e#0#16#0" expanded="true" />
-                  </folding>
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file leaf-file-name="Select.py" pinned="false" current-in-tab="false">
+          <file leaf-file-name="Select.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/Query/Operators/Select.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.0">
+                <state vertical-scroll-proportion="0.06879195">
                   <caret line="65" column="9" selection-start-line="65" selection-start-column="9" selection-end-line="65" selection-end-column="9" />
                   <folding />
                 </state>
@@ -62,9 +50,27 @@
             <entry file="file://$PROJECT_DIR$/Query/Plan.py">
               <provider selected="true" editor-type-id="text-editor">
                 <state vertical-scroll-proportion="0.0">
-                  <caret line="286" column="64" selection-start-line="286" selection-start-column="63" selection-end-line="286" selection-end-column="64" />
+                  <caret line="290" column="0" selection-start-line="290" selection-start-column="0" selection-end-line="290" selection-end-column="0" />
                   <folding>
                     <element signature="e#0#24#0" expanded="true" />
+                    <marker date="1457213553000" expanded="true" signature="422:6036" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="425:1087" placeholder="&quot;&quot;&quot;A data structure implementing query plans....&quot;&quot;&quot;" />
+                    <marker date="1457213553000" expanded="true" signature="1120:1373" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="1404:1472" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="1539:1560" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="1618:1648" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="1717:1804" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="1836:1906" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="2016:2296" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="2374:2694" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="2882:3051" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="3167:3194" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="3365:3568" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="4865:4902" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="5522:5942" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="5974:6036" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="6056:14222" placeholder="..." />
+                    <marker date="1457213553000" expanded="true" signature="6059:11989" placeholder="&quot;&quot;&quot;A query plan builder class that can be used for LINQ-like construction of queries....&quot;&quot;&quot;" />
                   </folding>
                 </state>
               </provider>
@@ -108,13 +114,25 @@
               </provider>
             </entry>
           </file>
-          <file leaf-file-name="GroupBy.py" pinned="false" current-in-tab="true">
+          <file leaf-file-name="GroupBy.py" pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/Query/Operators/GroupBy.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.043624163">
-                  <caret line="103" column="34" selection-start-line="103" selection-start-column="34" selection-end-line="103" selection-end-column="34" />
+                <state vertical-scroll-proportion="0.0">
+                  <caret line="54" column="0" selection-start-line="54" selection-start-column="0" selection-end-line="54" selection-end-column="0" />
                   <folding>
                     <element signature="e#0#35#0" expanded="true" />
+                  </folding>
+                </state>
+              </provider>
+            </entry>
+          </file>
+          <file leaf-file-name="Join.py" pinned="false" current-in-tab="true">
+            <entry file="file://$PROJECT_DIR$/Query/Operators/Join.py">
+              <provider selected="true" editor-type-id="text-editor">
+                <state vertical-scroll-proportion="0.55369127">
+                  <caret line="94" column="43" selection-start-line="94" selection-start-column="43" selection-end-line="94" selection-end-column="43" />
+                  <folding>
+                    <element signature="e#0#16#0" expanded="true" />
                   </folding>
                 </state>
               </provider>
@@ -465,7 +483,7 @@
     <frame x="-4" y="23" width="1280" height="716" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.2536349" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.2536349" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
@@ -659,14 +677,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/Query/Operators/Select.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="65" column="9" selection-start-line="65" selection-start-column="9" selection-end-line="65" selection-end-column="9" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/Storage/StorageEngine.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -680,9 +690,27 @@
     <entry file="file://$PROJECT_DIR$/Query/Plan.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="286" column="64" selection-start-line="286" selection-start-column="63" selection-end-line="286" selection-end-column="64" />
+          <caret line="290" column="0" selection-start-line="290" selection-start-column="0" selection-end-line="290" selection-end-column="0" />
           <folding>
             <element signature="e#0#24#0" expanded="true" />
+            <marker date="1457213553000" expanded="true" signature="422:6036" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="425:1087" placeholder="&quot;&quot;&quot;A data structure implementing query plans....&quot;&quot;&quot;" />
+            <marker date="1457213553000" expanded="true" signature="1120:1373" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="1404:1472" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="1539:1560" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="1618:1648" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="1717:1804" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="1836:1906" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="2016:2296" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="2374:2694" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="2882:3051" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="3167:3194" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="3365:3568" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="4865:4902" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="5522:5942" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="5974:6036" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="6056:14222" placeholder="..." />
+            <marker date="1457213553000" expanded="true" signature="6059:11989" placeholder="&quot;&quot;&quot;A query plan builder class that can be used for LINQ-like construction of queries....&quot;&quot;&quot;" />
           </folding>
         </state>
       </provider>
@@ -717,18 +745,26 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/Query/Operators/GroupBy.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.043624163">
-          <caret line="103" column="34" selection-start-line="103" selection-start-column="34" selection-end-line="103" selection-end-column="34" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="54" column="0" selection-start-line="54" selection-start-column="0" selection-end-line="54" selection-end-column="0" />
           <folding>
             <element signature="e#0#35#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/Query/Operators/Select.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.06879195">
+          <caret line="65" column="9" selection-start-line="65" selection-start-column="9" selection-end-line="65" selection-end-column="9" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/Query/Operators/Join.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.025167786">
-          <caret line="25" column="2" selection-start-line="25" selection-start-column="2" selection-end-line="25" selection-end-column="2" />
+        <state vertical-scroll-proportion="0.55369127">
+          <caret line="94" column="43" selection-start-line="94" selection-start-column="43" selection-end-line="94" selection-end-column="43" />
           <folding>
             <element signature="e#0#16#0" expanded="true" />
           </folding>
