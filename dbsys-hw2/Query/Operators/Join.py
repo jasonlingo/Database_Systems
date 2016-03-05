@@ -23,7 +23,7 @@ class Join(Operator):
     self.rhsHashFn      = kwargs.get("rhsHashFn", None)
 
     self.validateJoin()
-    self.initializeSchema()
+ c   self.initializeSchema()
     self.initializeMethod(**kwargs)
 
   # Checks the join parameters.
