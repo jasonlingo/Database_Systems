@@ -71,17 +71,6 @@ class GroupBy(Operator):
   def processInputPage(self, pageId, page):
     raise ValueError("Page-at-a-time processing not supported for GroupBy")
 
-  def processAggExpr(self):
-    initValues = []
-    funcs = []
-    finals = []
-    for e in self.aggExprs:
-      initValues.append(e[0])
-      funcs.append(e[1])
-      finals.append(e[2])
-
-    pass
-
   # Set-at-a-time operator processing
   def processAllPages(self):
     # create parition according to the given hashing group key
@@ -93,16 +82,24 @@ class GroupBy(Operator):
         self.emitTupleToGroup(groupId, tupleData)
 
     # aggregate data within every group
-    aggregateData = {}
+    aggrData = {}
     for relId in self.partitionFiles.values():
-      print("-------------------------------")
       partitionFile = self.storage.fileMgr.relationFile(relId)[1]
       for _, page in partitionFile.pages():
-        for tupleData in page:
-          self.subSchema.unpack(tupleData)
+        for tuple in page:
+          tupleData = self.subSchema.unpack(tuple)
+          key = self.groupExpr(tupleData)
+          if key in aggrData:
+            temp = aggrData[key]
+            aggrData[key] = [self.aggExprs[i][1](temp, tupleData)\
+                             for i in range(len(self.aggExprs))]
+          else:
+            aggrData[key] = [ self.aggExprs[i][1](self.aggExprs[i][0], tupleData) \
+                             for i in range(len(self.aggExprs))]
 
-
-
+    for e in aggrData:
+      outputTuple = self.outputSchema.instantiate(e, aggrData[e][0], aggrData[e][1])
+      self.emitOutputTuple(self.outputSchema.pack(outputTuple))
 
     return self.storage.pages(self.relationId())
 
