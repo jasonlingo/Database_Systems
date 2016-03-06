@@ -257,7 +257,7 @@ class FileManager:
   # This returns an iterator over tuple ids.
   def lookupByIndex(self, relId, indexId, keyData):
     if relId in self.relationFiles and self.indexManager:
-      self.indexManager.lookupByIndex(indexId, keyData)
+      return self.indexManager.lookupByIndex(indexId, keyData)
 
   # Removes tuple(s) by key using the given index.
   # This should maintain all other indexes by retrieving the full tuple and tuple id,
