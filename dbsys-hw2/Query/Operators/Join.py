@@ -2,6 +2,7 @@ import itertools
 
 from Catalog.Schema import DBSchema
 from Query.Operator import Operator
+import sys
 
 class Join(Operator):
   def __init__(self, lhsPlan, rhsPlan, **kwargs):
@@ -185,13 +186,20 @@ class Join(Operator):
     bufPool = self.storage.bufferPool
     lhsPageIterator = iter(lhsJoinPlan)
     pageBlock = self.accessPageBlock(bufPool, lhsPageIterator)
+    rhsPageIterator = list(iter(rhsJoinPlan))
+    sys.stderr.write(str(type(rhsPageIterator))+"\n")
 
     while pageBlock:
       for lhsPage in pageBlock:
         for lTuple in lhsPage:
           # Load the lhs once per outer loop.
           joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
-          for (rPageId, rhsPage) in iter(rhsJoinPlan):
+
+          if self.joinMethod == "hash":
+            # hash join
+            lhsKey = self.lhsKeySchema.project(self.lhsSchema.unpack(lTuple), self.lhsKeySchema, toList=True)
+          for (_, rhsPage) in rhsPageIterator:
+          # for (_, rhsPage) in iter(rhsJoinPlan):
             for rTuple in rhsPage:
               # Load the RHS tuple fields.
               joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
@@ -203,17 +211,10 @@ class Join(Operator):
                   self.emitOutputTuple(self.joinSchema.pack(outputTuple))
               else:
                 # hash join
-
-                print("---------------------------------")
-                print(self.rhsKeySchema.project(self.rhsSchema.unpack(rTuple), self.rhsKeySchema))
-
-                pass
-                # rhsKey = list(map(self.rhsKeySchema, [self.rhsSchema.unpack(rTuple)]))[0]
-
-                # if lhsKey == rhsKey:
-                #   outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
-                #   self.emitOutputTuple(self.joinSchema.pack(outputTuple))
-
+                rhsKey = self.rhsKeySchema.project(self.rhsSchema.unpack(rTuple), self.rhsKeySchema, toList=True)
+                if lhsKey == rhsKey:
+                  outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
+                  self.emitOutputTuple(self.joinSchema.pack(outputTuple))
 
           # No need to track anything but the last output page when in batch mode.
           if self.outputPages:
@@ -244,6 +245,13 @@ class Join(Operator):
     self.partitionFile(self.lhsPlan, self.lhsSchema, self.lhsKeySchema, self.lhsHashFn, lhs=True)
     self.partitionFile(self.rhsPlan, self.rhsSchema, self.rhsKeySchema, self.rhsHashFn, lhs=False)
 
+    # for lhsGroupId in self.lhsPartitionFiles:
+    #   lhsRelId = self.lhsPartitionFiles[lhsGroupId]
+    #   file = self.storage.fileMgr.relationFile(lhsRelId)[1]
+    #   for _, page in file.pages():
+    #     for tup in page:
+    #       sys.stderr.write(str(self.lhsSchema.unpack(tup))+"\n")
+
     # for each partition pairs (the same group id), join the tuples
     for lhsGroupId in self.lhsPartitionFiles:
       lhsRelId = self.lhsPartitionFiles[lhsGroupId]
@@ -251,21 +259,22 @@ class Join(Operator):
       if rhsRelId:
         lhsPartFile = self.storage.fileMgr.relationFile(lhsRelId)[1]
         rhsPartFile = self.storage.fileMgr.relationFile(rhsRelId)[1]
-        self.blockNestedLoops(lhsPartFile.pages(), rhsPartFile.pages())
+        self.lhsInputFinished = False
+        self.blockNestedLoops(iter(lhsPartFile.pages()), iter(rhsPartFile.pages()))
 
     return self.storage.pages(self.relationId())
 
-  def partitionFile(self, plan, planSchema, keySchema, hashFn, lhs=False):
+  def partitionFile(self, plan, planSchema, keySchema, hashFn, lhs):
     for _, page in iter(plan):
       for tupleData in page:
-        data = self.loadSchema(self.rhsSchema, tupleData)
-        groupId = eval(self.rhsHashFn, locals(), data)
+        data = self.loadSchema(planSchema, tupleData)
+        groupId = eval(hashFn, globals(), data)
         self.emitTupleToGroup(groupId, tupleData, planSchema, lhs)
 
   def toTuple(self, x):
     return x if isinstance(x, tuple) else (x,)
 
-  def createPartitionFile(self, groupId, schema, lhs=False):
+  def createPartitionFile(self, groupId, schema, lhs):
     relId = self.relationId() + "_tmp_" + ("lhs" if lhs else "rhs") + str(groupId)
 
     if self.storage.hasRelation(relId):
@@ -277,7 +286,7 @@ class Join(Operator):
     else:
       self.rhsPartitionFiles[groupId] = relId
 
-  def emitTupleToGroup(self, groupId, tupleData, schema, lhs=False):
+  def emitTupleToGroup(self, groupId, tupleData, schema, lhs):
     if lhs:
       relId = self.lhsPartitionFiles.get(groupId, None)
     else:
@@ -290,6 +299,7 @@ class Join(Operator):
       else:
         relId = self.rhsPartitionFiles[groupId]
 
+    # sys.stderr.write(str(groupId)+str(relId)+str(schema.unpack(tupleData))+"\n")
     _, partitionFile = self.storage.fileMgr.relationFile(relId)
     pageId = partitionFile.availablePage()
     page = self.storage.bufferPool.getPage(pageId)

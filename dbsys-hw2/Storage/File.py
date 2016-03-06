@@ -6,6 +6,7 @@ from Catalog.Schema      import DBSchema
 from Storage.Page        import PageHeader, Page
 from Storage.SlottedPage import SlottedPageHeader, SlottedPage
 
+
 class FileHeader:
   """
   A file header class, containing a page size and a schema for the data
