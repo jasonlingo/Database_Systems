@@ -81,7 +81,6 @@ class GroupBy(Operator):
       finalFuncs.append(e[2])
     # print (initValues, funcs, finals)
     return initValues, funcs, finalFuncs
-
   # Set-at-a-time operator processing
   def processAllPages(self):
     # create parition according to the given hashing group key
