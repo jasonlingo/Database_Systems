@@ -96,6 +96,8 @@ class Join(Operator):
   def __iter__(self):
     self.initializeOutput()
     self.lhsInputFinished = False
+    self.lhsPartitionFiles = {}
+    self.rhsPartitionFiles = {}
     self.outputIterator = self.processAllPages()
     return self
 
@@ -174,9 +176,14 @@ class Join(Operator):
 
     return resultPages
 
-  def blockNestedLoops(self):
+  def blockNestedLoops(self, lhsJoinPlan=None, rhsJoinPlan=None):
+    if not lhsJoinPlan:
+      lhsJoinPlan = self.lhsPlan
+    if not rhsJoinPlan:
+      rhsJoinPlan = self.rhsPlan
+
     bufPool = self.storage.bufferPool
-    lhsPageIterator = iter(self.lhsPlan)
+    lhsPageIterator = iter(lhsJoinPlan)
     pageBlock = self.accessPageBlock(bufPool, lhsPageIterator)
 
     while pageBlock:
@@ -184,16 +191,30 @@ class Join(Operator):
         for lTuple in lhsPage:
           # Load the lhs once per inner loop.
           joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
-
-          for (rPageId, rhsPage) in iter(self.rhsPlan):
+          for (rPageId, rhsPage) in iter(rhsJoinPlan):
             for rTuple in rhsPage:
-              # Load the RHS tuple fields.
+              # Evaluate the join predicate, and output if we have a match.
               joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
 
-              # Evaluate the join predicate, and output if we have a match.
-              if eval(self.joinExpr, globals(), joinExprEnv):
-                outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
-                self.emitOutputTuple(self.joinSchema.pack(outputTuple))
+
+              if self.joinMethod == "block-nested-loops":
+                # Load the RHS tuple fields.
+                if eval(self.joinExpr, globals(), joinExprEnv):
+                  outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
+                  self.emitOutputTuple(self.joinSchema.pack(outputTuple))
+              else:
+                # hash join
+
+                print("---------------------------------")
+                print(self.rhsKeySchema.project(self.rhsSchema.unpack(rTuple), self.rhsKeySchema))
+
+                pass
+                # rhsKey = list(map(self.rhsKeySchema, [self.rhsSchema.unpack(rTuple)]))[0]
+
+                # if lhsKey == rhsKey:
+                #   outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
+                #   self.emitOutputTuple(self.joinSchema.pack(outputTuple))
+
 
           # No need to track anything but the last output page when in batch mode.
           if self.outputPages:
@@ -220,7 +241,60 @@ class Join(Operator):
   # Hash join implementation.
   #
   def hashJoin(self):
-    raise NotImplementedError
+    # create partition files for both lhs and rhs
+    self.partitionFile(self.lhsPlan, self.lhsSchema, self.lhsKeySchema, self.lhsHashFn, lhs=True)
+    self.partitionFile(self.rhsPlan, self.rhsSchema, self.rhsKeySchema, self.rhsHashFn, lhs=False)
+
+    # for each partition pairs (the same group id), join the tuples
+    for lhsGroupId in self.lhsPartitionFiles:
+      lhsRelId = self.lhsPartitionFiles[lhsGroupId]
+      rhsRelId = self.rhsPartitionFiles.get(lhsGroupId, None)
+      if rhsRelId:
+        lhsPartFile = self.storage.fileMgr.relationFile(lhsRelId)[1]
+        rhsPartFile = self.storage.fileMgr.relationFile(rhsRelId)[1]
+        self.blockNestedLoops(lhsPartFile.pages(), rhsPartFile.pages())
+
+    return self.storage.pages(self.relationId())
+
+  def partitionFile(self, plan, planSchema, keySchema, hashFn, lhs=False):
+    for _, page in iter(plan):
+      for tupleData in page:
+        data = self.loadSchema(self.rhsSchema, tupleData)
+        groupId = eval(self.rhsHashFn, locals(), data)
+        self.emitTupleToGroup(groupId, tupleData, planSchema, lhs)
+
+  def toTuple(self, x):
+    return x if isinstance(x, tuple) else (x,)
+
+  def createPartitionFile(self, groupId, schema, lhs=False):
+    relId = self.relationId() + "_tmp_" + ("lhs" if lhs else "rhs") + str(groupId)
+
+    if self.storage.hasRelation(relId):
+      self.storage.removeRelation(relId)
+
+    self.storage.createRelation(relId, schema)
+    if lhs:
+      self.lhsPartitionFiles[groupId] = relId
+    else:
+      self.rhsPartitionFiles[groupId] = relId
+
+  def emitTupleToGroup(self, groupId, tupleData, schema, lhs=False):
+    if lhs:
+      relId = self.lhsPartitionFiles.get(groupId, None)
+    else:
+      relId = self.rhsPartitionFiles.get(groupId, None)
+
+    if not relId:
+      self.createPartitionFile(groupId, schema, lhs)
+      if lhs:
+        relId = self.lhsPartitionFiles[groupId]
+      else:
+        relId = self.rhsPartitionFiles[groupId]
+
+    _, partitionFile = self.storage.fileMgr.relationFile(relId)
+    pageId = partitionFile.availablePage()
+    page = self.storage.bufferPool.getPage(pageId)
+    page.insertTuple(tupleData)
 
   # Plan and statistics information
 

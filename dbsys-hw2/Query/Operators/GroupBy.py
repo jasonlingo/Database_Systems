@@ -112,16 +112,21 @@ class GroupBy(Operator):
       newTuple = self.outputSchema.instantiate(key, aggregateData[key][0], aggregateData[key][1])
       self.emitOutputTuple(self.outputSchema.pack(newTuple))
 
-    # TODO: delete temp partition files
-
     # No need to track anything but the last output page when in batch mode.
     if self.outputPages:
       self.outputPages = [self.outputPages[-1]]
+
+    self.deletePartitionFiles()
 
     return self.storage.pages(self.relationId())
 
   def toTuple(self, x):
     return x if isinstance(x, tuple) else (x,)
+
+  def deletePartitionFiles(self):
+    for relId in self.partitionFiles.values():
+      self.storage.removeRelation(relId)
+    self.partitionFiles = {}
 
   def createPartitionFile(self, groupId):
     relId = self.relationId() + "_tmp_" + str(groupId)
