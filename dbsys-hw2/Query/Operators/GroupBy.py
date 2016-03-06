@@ -71,40 +71,61 @@ class GroupBy(Operator):
   def processInputPage(self, pageId, page):
     raise ValueError("Page-at-a-time processing not supported for GroupBy")
 
+  def processAggExpr(self):
+    initValues = []
+    funcs = []
+    finalFuncs = []
+    for e in self.aggExprs:
+      initValues.append(e[0])
+      funcs.append(e[1])
+      finalFuncs.append(e[2])
+    # print (initValues, funcs, finals)
+    return initValues, funcs, finalFuncs
   # Set-at-a-time operator processing
   def processAllPages(self):
     # create parition according to the given hashing group key
     # assign tuple to a partition according to the hashed key value
     for pageId, page in iter(self.subPlan):
       for tupleData in page:
-        key = self.groupExpr(self.subSchema.unpack(tupleData))
-        groupId = self.groupHashFn(self.toTuple(key))
+        key = list(map(self.groupExpr, [self.subSchema.unpack(tupleData)]))[0]
+        groupId = list(map(self.groupHashFn, [self.toTuple(key)]))[0]
         self.emitTupleToGroup(groupId, tupleData)
 
     # aggregate data within every group
-    aggrData = {}
+    aggregateData = {}
+    initValues, funcs, finalFuncs = self.processAggExpr()
     for relId in self.partitionFiles.values():
       partitionFile = self.storage.fileMgr.relationFile(relId)[1]
       for _, page in partitionFile.pages():
-        for tuple in page:
-          tupleData = self.subSchema.unpack(tuple)
-          key = self.groupExpr(tupleData)
-          if key in aggrData:
-            temp = aggrData[key]
-            aggrData[key] = [self.aggExprs[i][1](temp, tupleData)\
-                             for i in range(len(self.aggExprs))]
-          else:
-            aggrData[key] = [ self.aggExprs[i][1](self.aggExprs[i][0], tupleData) \
-                             for i in range(len(self.aggExprs))]
+        for tupleData in page:
+          unpackTuple = self.subSchema.unpack(tupleData)
+          key = list(map(self.groupExpr, [unpackTuple]))[0]
+          if key not in aggregateData:
+            aggregateData[key] = initValues[:]
+          for i in range(len(funcs)):
+            aggregateData[key][i] = list(map(funcs[i], [aggregateData[key][i]], [unpackTuple]))[0]
 
-    for e in aggrData:
-      outputTuple = self.outputSchema.instantiate(e, aggrData[e][0], aggrData[e][1])
-      self.emitOutputTuple(self.outputSchema.pack(outputTuple))
+    for key in aggregateData:
+      for i in range(len(finalFuncs)):
+        aggregateData[key][i] = list(map(finalFuncs[i], [aggregateData[key][i]]))[0]
+      newTuple = self.outputSchema.instantiate(key, aggregateData[key][0], aggregateData[key][1])
+      self.emitOutputTuple(self.outputSchema.pack(newTuple))
+
+    # No need to track anything but the last output page when in batch mode.
+    if self.outputPages:
+      self.outputPages = [self.outputPages[-1]]
+
+    self.deletePartitionFiles()
 
     return self.storage.pages(self.relationId())
 
   def toTuple(self, x):
     return x if isinstance(x, tuple) else (x,)
+
+  def deletePartitionFiles(self):
+    for relId in self.partitionFiles.values():
+      self.storage.removeRelation(relId)
+    self.partitionFiles = {}
 
   def createPartitionFile(self, groupId):
     relId = self.relationId() + "_tmp_" + str(groupId)

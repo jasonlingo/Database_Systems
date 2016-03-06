@@ -54,8 +54,8 @@ class Operator:
 
   # Create a temporary output relation, removing any existing relation.
   def initializeOutput(self):
-    relId = self.relationId()
 
+    relId = self.relationId()
     if self.storage.hasRelation(relId):
       self.storage.removeRelation(relId)
 
