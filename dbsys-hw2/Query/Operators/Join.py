@@ -189,16 +189,15 @@ class Join(Operator):
     while pageBlock:
       for lhsPage in pageBlock:
         for lTuple in lhsPage:
-          # Load the lhs once per inner loop.
+          # Load the lhs once per outer loop.
           joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
           for (rPageId, rhsPage) in iter(rhsJoinPlan):
             for rTuple in rhsPage:
-              # Evaluate the join predicate, and output if we have a match.
+              # Load the RHS tuple fields.
               joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
 
-
               if self.joinMethod == "block-nested-loops":
-                # Load the RHS tuple fields.
+                # Evaluate the join predicate, and output if we have a match.
                 if eval(self.joinExpr, globals(), joinExprEnv):
                   outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
                   self.emitOutputTuple(self.joinSchema.pack(outputTuple))
