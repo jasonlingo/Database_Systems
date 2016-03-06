@@ -169,20 +169,36 @@ class FileManager:
       self.checkpoint()
 
   def relationFile(self, relId):
+    """
+    Get file id and file by the given relation id.
+    :param relId:
+    :return: (file id, file)
+    """
     fId = self.relationFiles.get(relId, None) if relId else None
     return (fId, self.fileMap.get(fId, None)) if fId else (None, None)
 
 
   # Page operations
   def readPage(self, pageId, pageBuffer):
+    """
+    Read a page from a file by the given page id.
+    :param pageId:
+    :param pageBuffer:
+    :return:
+    """
     rFile = self.fileMap.get(pageId.fileId, None) if pageId else None
     if rFile:
       return rFile.readPage(pageId, pageBuffer)
 
   def writePage(self, page):
+    """
+    Write a page to its file.
+    :param page:
+    :return:
+    """
     rFile = self.fileMap.get(page.pageId.fileId, None) if page.pageId else None
     if rFile:
-      return rFile.writePage(page)
+      return rFile.writePage(page)  #FIXME: it actually returns None because File.write has no return value
 
 
   # Index management wrappers.
@@ -210,6 +226,12 @@ class FileManager:
 
   # Returns a tuple id for the newly inserted data.
   def insertTuple(self, relId, tupleData):
+    """
+    Insert tuple and maintain the index.
+    :param relId:
+    :param tupleData:
+    :return: tuple id
+    """
     (_, rFile) = self.relationFile(relId)
     if rFile and self.indexManager:
       tupleId = rFile.insertTuple(tupleData)
@@ -287,6 +309,10 @@ class FileManager:
 
   # Tuple-based table scan
   def tuples(self, relId):
+    """
+    :param relId:
+    :return: tuple iterator of a file
+    """
     (_, rFile) = self.relationFile(relId)
     if rFile:
       return rFile.tuples()
