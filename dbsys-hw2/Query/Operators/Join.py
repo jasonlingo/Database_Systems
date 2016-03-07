@@ -233,8 +233,52 @@ class Join(Operator):
   #
   # TODO: test
   def indexedNestedLoops(self):
-    raise NotImplementedError
+    if self.indexId:
+      bufPool = self.storage.bufferPool
 
+      for _, lhsPage in iter(self.lhsPlan):
+        for lTuple in lhsPage:
+          joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
+
+          lJoinKey = self.lhsSchema.projectBinary(lTuple, self.lhsKeySchema)
+          matches = self.storage.fileMgr.lookupByIndex(self.rhsSchema.name, self.indexId, lJoinKey)
+
+          if matches:
+            for rTupleId in matches:
+              rhsPage = bufPool.getPage(rTupleId.pageId)
+              rTuple = rhsPage.getTuple(rTupleId)
+              joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
+              if eval(self.joinExpr, globals(), joinExprEnv):
+                outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
+                self.emitOutputTuple(self.joinSchema.pack(outputTuple))
+        # No need to track anything but the last output page when in batch mode.
+        if self.outputPages:
+          self.outputPages = [self.outputPages[-1]]
+
+      return self.storage.pages(self.relationId())
+
+    else:
+      raise ValueError("No index for index-join")
+
+
+    # for (lPageId, lhsPage) in iter(self.lhsPlan):
+    #   for lTuple in lhsPage:
+    #     # Load the lhs once per inner loop.
+    #     joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
+    #
+    #     for (rPageId, rhsPage) in iter(self.rhsPlan):
+    #       for rTuple in rhsPage:
+    #         # Load the RHS tuple fields.
+    #         joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
+    #
+    #         # Evaluate the join predicate, and output if we have a match.
+    #         if eval(self.joinExpr, globals(), joinExprEnv):
+    #           outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
+    #           self.emitOutputTuple(self.joinSchema.pack(outputTuple))
+    #
+    #     # No need to track anything but the last output page when in batch mode.
+    #     if self.outputPages:
+    #       self.outputPages = [self.outputPages[-1]]
   ##################################
   #
   # Hash join implementation.
