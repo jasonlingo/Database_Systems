@@ -201,7 +201,7 @@ class Join(Operator):
 
           if self.joinMethod == "hash":
             # hash join
-            lhsKey = self.lhsKeySchema.project(self.lhsSchema.unpack(lTuple), self.lhsKeySchema, toList=True)
+            lhsKey = self.lhsKeySchema.project(self.lhsSchema.unpack(lTuple), self.lhsKeySchema)
           for (_, rhsPage) in rhsPageIterator:
           # for (_, rhsPage) in iter(rhsJoinPlan):
             for rTuple in rhsPage:
@@ -215,7 +215,7 @@ class Join(Operator):
                   self.emitOutputTuple(self.joinSchema.pack(outputTuple))
               else:
                 # hash join
-                rhsKey = self.rhsKeySchema.project(self.rhsSchema.unpack(rTuple), self.rhsKeySchema, toList=True)
+                rhsKey = self.rhsKeySchema.project(self.rhsSchema.unpack(rTuple), self.rhsKeySchema)
                 if lhsKey == rhsKey:
                   outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
                   self.emitOutputTuple(self.joinSchema.pack(outputTuple))
@@ -272,11 +272,7 @@ class Join(Operator):
     for _, page in iter(plan):
       for tupleData in page:
         data = self.loadSchema(planSchema, tupleData)
-<<<<<<< HEAD
-        groupId = eval(hashFn, locals(), data)
-=======
         groupId = eval(hashFn, globals(), data)
->>>>>>> 02e23bf0cee4a186a03843cd72d690b1f3a23de6
         self.emitTupleToGroup(groupId, tupleData, planSchema, lhs)
 
   def toTuple(self, x):
