@@ -303,6 +303,8 @@ class PlanBuilder:
         .order(sortKeyFn=lambda x: x.age, sortKeyDesc='age') \
         .select({'id': ('id', 'int')}).finalize()
 
+  >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
+
   >>> print(query7.explain()) # doctest: +ELLIPSIS
   Project[...,cost=...](projections={'id': ('id', 'int')})
     Sort[...,cost=...](sortKeyDesc='age')

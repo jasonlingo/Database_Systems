@@ -185,7 +185,8 @@ class BufferPool:
   def clear(self):
     for (pageId, (offset, page, _)) in self.pageMap.items():
       if page.isDirty():
-        self.flushPage(pageId)
+        pass
+        #self.flushPage(pageId)
 
 
 if __name__ == "__main__":
