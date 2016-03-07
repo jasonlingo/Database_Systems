@@ -255,17 +255,15 @@ class DBSchema:
               == list(zip(other.fields, other.types))
 
   # Project a tuple to the given schema
-  def project(self, instance, schema, toList=False):
+  def project(self, instance, schema):
     fields = []
     for f in schema.fields:
       if f in self.fields:
         fields.append(getattr(instance, f))
       else:
         raise ValueError("Invalid field in projection: "+f)
-    if toList:
-      return fields
-    else:
-      return schema.instantiate(*fields)
+
+    return schema.instantiate(*fields)
 
   # Project a packed tuple to a binary representation of the given schema.
   # TODO: make this more efficient by direct field access and copying.

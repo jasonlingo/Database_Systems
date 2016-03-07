@@ -32,20 +32,25 @@ class Sort(Operator):
 
   # Iterator abstraction for external sort operator.
   def __iter__(self):
-    raise NotImplementedError
+    self.initializeOutput()
+    self.partitionFiles = {}
+    self.outputIterator = self.processAllPages()
+    return self
 
   def __next__(self):
-    raise NotImplementedError
+    return next(self.outputIterator)
 
   # Page processing and control methods
 
   # Page-at-a-time operator processing
   def processInputPage(self, pageId, page):
-    raise NotImplementedError
+    pass
+
 
   # Set-at-a-time operator processing
   def processAllPages(self):
-    raise NotImplementedError
+    pass
+
 
 
   # Plan and statistics information

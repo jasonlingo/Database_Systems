@@ -187,7 +187,6 @@ class Join(Operator):
     lhsPageIterator = iter(lhsJoinPlan)
     pageBlock = self.accessPageBlock(bufPool, lhsPageIterator)
     rhsPageIterator = list(iter(rhsJoinPlan))
-    sys.stderr.write(str(type(rhsPageIterator))+"\n")
 
     while pageBlock:
       for lhsPage in pageBlock:
@@ -197,9 +196,9 @@ class Join(Operator):
 
           if self.joinMethod == "hash":
             # hash join
-            lhsKey = self.lhsKeySchema.project(self.lhsSchema.unpack(lTuple), self.lhsKeySchema, toList=True)
+            lhsKey = self.lhsKeySchema.project(self.lhsSchema.unpack(lTuple), self.lhsKeySchema)
+
           for (_, rhsPage) in rhsPageIterator:
-          # for (_, rhsPage) in iter(rhsJoinPlan):
             for rTuple in rhsPage:
               # Load the RHS tuple fields.
               joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
@@ -211,7 +210,7 @@ class Join(Operator):
                   self.emitOutputTuple(self.joinSchema.pack(outputTuple))
               else:
                 # hash join
-                rhsKey = self.rhsKeySchema.project(self.rhsSchema.unpack(rTuple), self.rhsKeySchema, toList=True)
+                rhsKey = self.rhsKeySchema.project(self.rhsSchema.unpack(rTuple), self.rhsKeySchema)
                 if lhsKey == rhsKey:
                   outputTuple = self.joinSchema.instantiate(*[joinExprEnv[f] for f in self.joinSchema.fields])
                   self.emitOutputTuple(self.joinSchema.pack(outputTuple))
@@ -260,7 +259,7 @@ class Join(Operator):
         lhsPartFile = self.storage.fileMgr.relationFile(lhsRelId)[1]
         rhsPartFile = self.storage.fileMgr.relationFile(rhsRelId)[1]
         self.lhsInputFinished = False
-        self.blockNestedLoops(iter(lhsPartFile.pages()), iter(rhsPartFile.pages()))
+        self.blockNestedLoops(lhsPartFile.pages(), rhsPartFile.pages())
 
     return self.storage.pages(self.relationId())
 
