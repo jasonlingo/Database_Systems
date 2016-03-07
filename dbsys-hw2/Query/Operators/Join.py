@@ -244,13 +244,6 @@ class Join(Operator):
     self.partitionFile(self.lhsPlan, self.lhsSchema, self.lhsKeySchema, self.lhsHashFn, lhs=True)
     self.partitionFile(self.rhsPlan, self.rhsSchema, self.rhsKeySchema, self.rhsHashFn, lhs=False)
 
-    # for lhsGroupId in self.lhsPartitionFiles:
-    #   lhsRelId = self.lhsPartitionFiles[lhsGroupId]
-    #   file = self.storage.fileMgr.relationFile(lhsRelId)[1]
-    #   for _, page in file.pages():
-    #     for tup in page:
-    #       sys.stderr.write(str(self.lhsSchema.unpack(tup))+"\n")
-
     # for each partition pairs (the same group id), join the tuples
     for lhsGroupId in self.lhsPartitionFiles:
       lhsRelId = self.lhsPartitionFiles[lhsGroupId]
@@ -260,6 +253,8 @@ class Join(Operator):
         rhsPartFile = self.storage.fileMgr.relationFile(rhsRelId)[1]
         self.lhsInputFinished = False
         self.blockNestedLoops(lhsPartFile.pages(), rhsPartFile.pages())
+
+    self.deletePartitionFiles()
 
     return self.storage.pages(self.relationId())
 
@@ -272,6 +267,15 @@ class Join(Operator):
 
   def toTuple(self, x):
     return x if isinstance(x, tuple) else (x,)
+
+  def deletePartitionFiles(self):
+    for relId in self.lhsPartitionFiles.values():
+      self.storage.removeRelation(relId)
+    self.lhsPartitionFiles = {}
+
+    for relId in self.rhsPartitionFiles.values():
+      self.storage.removeRelation(relId)
+    self.rhsPartitionFiles = {}
 
   def createPartitionFile(self, groupId, schema, lhs):
     relId = self.relationId() + "_tmp_" + ("lhs" if lhs else "rhs") + str(groupId)
@@ -298,7 +302,6 @@ class Join(Operator):
       else:
         relId = self.rhsPartitionFiles[groupId]
 
-    # sys.stderr.write(str(groupId)+str(relId)+str(schema.unpack(tupleData))+"\n")
     _, partitionFile = self.storage.fileMgr.relationFile(relId)
     pageId = partitionFile.availablePage()
     page = self.storage.bufferPool.getPage(pageId)
