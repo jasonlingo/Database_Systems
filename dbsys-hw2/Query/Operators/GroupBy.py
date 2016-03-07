@@ -81,6 +81,7 @@ class GroupBy(Operator):
       finalFuncs.append(e[2])
     # print (initValues, funcs, finals)
     return initValues, funcs, finalFuncs
+
   # Set-at-a-time operator processing
   def processAllPages(self):
     # create parition according to the given hashing group key
@@ -108,8 +109,10 @@ class GroupBy(Operator):
     for key in aggregateData:
       for i in range(len(finalFuncs)):
         aggregateData[key][i] = list(map(finalFuncs[i], [aggregateData[key][i]]))[0]
-      newTuple = self.outputSchema.instantiate(key, aggregateData[key][0], aggregateData[key][1])
-      self.emitOutputTuple(self.outputSchema.pack(newTuple))
+
+      param = [key] + aggregateData[key]
+      newTuple = self.schema().instantiate(*param)
+      self.emitOutputTuple(self.schema().pack(newTuple))
 
     # No need to track anything but the last output page when in batch mode.
     if self.outputPages:

@@ -308,6 +308,10 @@ class PlanBuilder:
     Sort[...,cost=...](sortKeyDesc='age')
       TableScan[...,cost=...](employee)
 
+  >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
+  >>> print(q7results)
+
+
   # Populate employees relation with another 10000 tuples
   >>> for tup in [schema.pack(schema.instantiate(i, math.ceil(random.gauss(45, 25)))) for i in range(10000)]:
   ...    _ = db.insertTuple(schema.name, tup)
