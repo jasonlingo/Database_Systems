@@ -188,7 +188,6 @@ class Join(Operator):
     lhsPageIterator = iter(lhsJoinPlan)
     pageBlock = self.accessPageBlock(bufPool, lhsPageIterator)
     rhsPageIterator = list(iter(rhsJoinPlan))
-    sys.stderr.write(str(type(rhsPageIterator))+"\n")
 
     rhsList = list(iter(rhsJoinPlan))
 
@@ -203,7 +202,6 @@ class Join(Operator):
             # hash join
             lhsKey = self.lhsKeySchema.project(self.lhsSchema.unpack(lTuple), self.lhsKeySchema)
           for (_, rhsPage) in rhsPageIterator:
-          # for (_, rhsPage) in iter(rhsJoinPlan):
             for rTuple in rhsPage:
               # Load the RHS tuple fields.
               joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
@@ -264,7 +262,7 @@ class Join(Operator):
         lhsPartFile = self.storage.fileMgr.relationFile(lhsRelId)[1]
         rhsPartFile = self.storage.fileMgr.relationFile(rhsRelId)[1]
         self.lhsInputFinished = False
-        self.blockNestedLoops(iter(lhsPartFile.pages()), iter(rhsPartFile.pages()))
+        self.blockNestedLoops(lhsPartFile.pages(), rhsPartFile.pages())
 
     return self.storage.pages(self.relationId())
 

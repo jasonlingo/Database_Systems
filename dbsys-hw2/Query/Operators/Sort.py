@@ -41,7 +41,6 @@ class Sort(Operator):
 
   def __next__(self):
     return next(self.outputIterator)
-    #raise NotImplementedError
 
   # Page processing and control methods
 
