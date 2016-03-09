@@ -13,11 +13,20 @@
 -- .import /home/cs416/datasets/hw0/tpch-sf0.1/nation.csv nation
 -- .import /home/cs416/datasets/hw0/tpch-sf0.1/region.csv region
 
-.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/tpch-sf0.1/part.csv part
-.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/tpch-sf0.1/supplier.csv supplier
-.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/tpch-sf0.1/partsupp.csv partsupp
-.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/tpch-sf0.1/customer.csv customer
-.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/tpch-sf0.1/orders.csv orders
-.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/tpch-sf0.1/lineitem.csv lineitem
-.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/tpch-sf0.1/nation.csv nation
-.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/tpch-sf0.1/region.csv region
+.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/data-tpch-sf-0.001/part.csv part
+.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/data-tpch-sf-0.001/supplier.csv supplier
+.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/data-tpch-sf-0.001/partsupp.csv partsupp
+.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/data-tpch-sf-0.001/customer.csv customer
+.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/data-tpch-sf-0.001/orders.csv orders
+.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/data-tpch-sf-0.001/lineitem.csv lineitem
+.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/data-tpch-sf-0.001/nation.csv nation
+.import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/data-tpch-sf-0.001/region.csv region
+
+.import /home/cs416/datasets/tpch-sf0.001/part.csv part
+.import /home/cs416/datasets/tpch-sf0.001/supplier.csv supplier
+.import /home/cs416/datasets/tpch-sf0.001/partsupp.csv partsupp
+.import /home/cs416/datasets/tpch-sf0.001/customer.csv customer
+.import /home/cs416/datasets/tpch-sf0.001/orders.csv orders
+.import /home/cs416/datasets/tpch-sf0.001/lineitem.csv lineitem
+.import /home/cs416/datasets/tpch-sf0.001/nation.csv nation
+.import /home/cs416/datasets/tpch-sf0.001/region.csv region

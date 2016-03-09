@@ -164,7 +164,7 @@ class Sort(Operator):
     page = self.storage.bufferPool.getPage(pageId)
     for tup in tuples:
       page.insertTuple(self.schema().pack(tup))
-g
+
   # Plan and statistics information
 
   # Returns a single line description of the operator.
