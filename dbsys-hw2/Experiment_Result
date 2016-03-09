@@ -1,0 +1,8 @@
+dataset 0.001
+    Question1
+        hash join: 82.76287245750427
+        block-nested join: 112.15825939178467
+
+
+
+dataset 0.01
