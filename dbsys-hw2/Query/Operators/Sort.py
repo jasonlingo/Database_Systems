@@ -1,5 +1,7 @@
 from Catalog.Schema import DBSchema
 from Query.Operator import Operator
+import sys
+
 
 # Operator for External Sort
 class Sort(Operator):
@@ -34,9 +36,9 @@ class Sort(Operator):
   def __iter__(self):
     self.initializeOutput()
     self.inputIterator = iter(self.subPlan)
-    self.partitionFiles = {}
-
     self.inputFinished = False
+    self.partitionFiles = []
+    self.partFileNo = 0
     self.outputIterator = self.processAllPages()
     return self
     #raise NotImplementedError
@@ -46,100 +48,123 @@ class Sort(Operator):
 
   # Page processing and control methods
 
-  # Page-at-a-time operator processing
-  def processInputPage(self, pageId, page):
-    pass
-    # raise NotImplementedError
 
   def accessPageBlock(self, bufPool, pageIterator):
     resultPages = []
-    maxBlockSize = bufPool.numFreePages()
-    self.InputFinished = False
-    while not (self.InputFinished or bufPool.numFreePages() == 0 or maxBlockSize == 0):
+    maxBlockSize = bufPool.numPages() - 2
+    while not (self.inputFinished or bufPool.numFreePages() == 0 or maxBlockSize == 0):
       try:
         pageId, page = next(pageIterator)
         resultPages.append(bufPool.getPage(pageId, True))
         maxBlockSize -= 1
       except StopIteration:
-        self.InputFinished = True
+        self.inputFinished = True
 
     return resultPages
 
+  # Page-at-a-time operator processing
+  def processInputPage(self, pageId, page):
+    schema = self.subPlan.schema()
+    if set(locals().keys()).isdisjoint(set(schema.fields)):
+      for inputTuple in page:
+        # Load tuple fields into the select expression context
+        selectExprEnv = self.loadSchema(schema, inputTuple)
+
+        # Execute the predicate.
+        if eval(self.selectExpr, globals(), selectExprEnv):
+          self.emitOutputTuple(inputTuple)
+    else:
+      raise ValueError("Overlapping variables detected with operator schema")
+
   # Set-at-a-time operator processing
   def processAllPages(self):
-    bufPool = self.storage.bufferPool
-    pageIterator = iter(self.subPlan)
+    if not self.inputIterator:
+      self.inputIterator = iter(self.subPlan)
 
-    pageBlock = self.accessPageBlock(bufPool, pageIterator)
-    counter = 0 # id for partition
+    bufPool = self.storage.bufferPool
+    pageBlock = self.accessPageBlock(bufPool, self.inputIterator)
 
     while pageBlock:
-      namedtuples = list()
+      tuples = []
       for page in pageBlock:
-
-        for tuple in page:
-          namedtuples.append(self.schema().unpack(tuple))
+        tuples.extend(self.schema().unpack(tup) for tup in page)
         bufPool.unpinPage(page.pageId)
+      tuples.sort(key=self.sortKeyFn, reverse=True)
+      self.emitTupleToPartFile(tuples)
+      pageBlock = self.accessPageBlock(bufPool, self.inputIterator)
 
-      namedtuples.sort(key = self.sortKeyFn, reverse=True)
-      for e in namedtuples:
-        #print ("e is", e)
-        self.emitTupleToGroup(counter, self.schema().pack(e))
-      counter += 1
+    self.mergeSort()
+    self.outputSortedFile()
 
-      pageBlock = self.accessPageBlock(bufPool, pageIterator)
-
-    result = list()
-    for relId in self.partitionFiles.values():
-      file = self.storage.fileMgr.relationFile(relId)[1]
-      for _, page in file.pages():
-        temp = list()
-        for tuple in page:
-          temp.append(self.schema().unpack(tuple))
-        result = self.merge(list(result), temp)
-
-    for e in result:
-      self.emitOutputTuple(self.schema().pack(e))
-
-    if self.outputPages:
-      self.outputPages = [self.outputPages[-1]]
-
-    self.deletePartitionFiles()
     # Return an iterator to the output relation
     return self.storage.pages(self.relationId())
 
-  def merge(self, temp1, temp2):
-    result = temp1 + temp2
-    result.sort(key = self.sortKeyFn, reverse=True)
-    return result
+  def toTuple(self, x):
+    return x if isinstance(x, tuple) else (x,)
 
+  def outputSortedFile(self):
+    relId = self.partitionFiles.pop(0)
+    _, file = self.storage.fileMgr.relationFile(relId)
+    for tup in file.tuples():
+      self.emitOutputTuple(tup)
 
-  def deletePartitionFiles(self):
-    for relId in self.partitionFiles.values():
+  def mergeSort(self):
+    while self.partitionFiles:
+      if len(self.partitionFiles) == 1:
+        # the last one is the final sorted file
+        break
+
+      tuples = []
+      relId1 = self.partitionFiles.pop(0)
+      relId2 = self.partitionFiles.pop(0)
+      _, file1 = self.storage.fileMgr.relationFile(relId1)
+      _, file2 = self.storage.fileMgr.relationFile(relId2)
+      file1TupIter = file1.tuples()
+      file2TupIter = file2.tuples()
+      tup1 = self.schema().unpack(next(file1TupIter))
+      tup2 = self.schema().unpack(next(file2TupIter))
+      while tup1 and tup2:
+        if list(map(self.sortKeyFn, [tup1])) >= list(map(self.sortKeyFn, [tup2])):
+          tuples.append(tup1)
+          tup1 = self.schema().unpack(next(file1TupIter))
+        else:
+          tuples.append(tup2)
+          tup2 = self.schema().unpack(next(file2TupIter))
+      while tup1:
+        tuples.append(tup1)
+        tup1 = self.schema().unpack(next(file1TupIter))
+      while tup2:
+        tuples.append(tup2)
+        tup2 = self.schema().unpack(next(file2TupIter))
+
+      self.emitTupleToPartFile(tuples)
+      self.deletePartitionFiles([relId1, relId2])
+
+  def deletePartitionFiles(self, deleteFiles):
+    for relId in deleteFiles:
       self.storage.removeRelation(relId)
-    self.partitionFiles = {}
 
-  def createPartitionFile(self, groupId):
-    relId = self.relationId() + "_tmp_" + str(groupId)
+  def createPartitionFile(self):
+    relId = self.relationId() + "_tmp_" + str(self.partFileNo)
+    self.partFileNo += 1
 
     if self.storage.hasRelation(relId):
       self.storage.removeRelation(relId)
 
     self.storage.createRelation(relId, self.schema())
-    self.partitionFiles[groupId] = relId
+    self.partitionFiles.append(relId)
 
-  def emitTupleToGroup(self, groupId, tupleData):
-    relId = self.partitionFiles.get(groupId, None)
-    if not relId:
-      self.createPartitionFile(groupId)
-      relId = self.partitionFiles[groupId]
+  def emitTupleToPartFile(self, tuples):
+    # for each block of tuples, create a new file to store the sorted result
+    self.createPartitionFile()
+    relId = self.partitionFiles[-1]
 
-    _, partitionFile = self.storage.fileMgr.relationFile(relId)
-    pageId = partitionFile.availablePage()
+    _, file = self.storage.fileMgr.relationFile(relId)
+    pageId = file.availablePage()
     page = self.storage.bufferPool.getPage(pageId)
-    page.insertTuple(tupleData)
-
-
+    for tup in tuples:
+      page.insertTuple(self.schema().pack(tup))
+g
   # Plan and statistics information
 
   # Returns a single line description of the operator.
