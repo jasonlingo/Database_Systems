@@ -190,66 +190,66 @@ if __name__=="__main__":
     """
 
     # tables
-    customer = db.query().fromTable('customer')
-    nation   = db.query().fromTable('nation')
-    orders   = db.query().fromTable('orders')
-    lineitem = db.query().fromTable('lineitem')
-    part     = db.query().fromTable('part')
+    customer = db.relationSchema('customer')
+    nation   = db.relationSchema('nation')
+    orders   = db.relationSchema('orders')
+    lineitem = db.relationSchema('lineitem')
+    part     = db.relationSchema('part')
 
-    # print(customer.toString())
-    # print(nation.toString())
-    # print(orders.toString())
-    # print(lineitem.toString())
-    # print(part.toString())
+    print(customer.toString())
+    print(nation.toString())
+    print(orders.toString())
+    print(lineitem.toString())
+    print(part.toString())
 
-    # hash join
-    # customer join nation
-    cus_nationKey = DBSchema('cus_nationKey', [('C_NATIONKEY', 'int')])
-    nat_nationKey = DBSchema('nat_nationKey', [('N_NATIONKEY', 'int')])
-
-    # customer join orders
-    cus_custKey   = DBSchema('cus_custKey', [('C_CUSTKEY', 'int')])
-    ord_custKey   = DBSchema('ord_custKey', [('O_CUSTKEY', 'int')])
-
-    # orders join lineitem
-    ord_orderKey  = DBSchema('ord_orderKey', [('O_ORDERKEY', 'int')])
-    line_orderKey = DBSchema('line_orderKey', [('L_ORDERKEY', 'int')])
-
-    # lineitem join part
-    line_partKey  = DBSchema('line_partKey', [('L_PARTKEY', 'int')])
-    part_partKey  = DBSchema('part_partKey', [('P_PARTKEY', 'int')])
-
-    joinTables = customer.join(
-        nation,
-        rhsSchema=db.relationSchema('nation'),
-        method='hash',
-        lhsHashFn='hash(C_NATIONKEY) % 4', lhsKeySchema=cus_nationKey,
-        rhsHashFn='hash(N_NATIONKEY) % 4', rhsKeySchema=nat_nationKey
-    ).join(
-        orders,
-        rhsSchema=db.relationSchema('orders'),
-        method='hash',
-        lhsHashFn='hash(C_CUSTKEY) % 4', lhsKeySchema=cus_custKey,
-        rhsHashFn='hash(O_CUSTKEY) % 4', rhsKeySchema=ord_custKey
-    ).join(
-        lineitem,
-        rhsSchema=db.relationSchema('lineitem'),
-        method='hash',
-        lhsHashFn='hash(O_ORDERKEY) % 4', lhsKeySchema=ord_orderKey,
-        rhsHashFn='hash(L_ORDERKEY) % 4', rhsKeySchema=line_orderKey
-    ).join(
-        part,
-        rhsSchema=db.relationSchema('part'),
-        method='hash',
-        lhsHashFn='hash(L_PARTKEY) % 4', lhsKeySchema=line_partKey,
-        rhsHashFn='hash(P_PARTKEY) % 4', rhsKeySchema=part_partKey
-    )
-
-
-    # first group by
-    groupSchema   = DBSchema('nation_part_name', [('N_NAME', 'char(25)'), ('P_NAME', 'char(55)')])
-    aggSumSchema  = DBSchema('nation_part_sum', [('num', 'double')])
-
+    # # hash join
+    # # customer join nation
+    # cus_nationKey = DBSchema('cus_nationKey', [('C_NATIONKEY', 'int')])
+    # nat_nationKey = DBSchema('nat_nationKey', [('N_NATIONKEY', 'int')])
+    #
+    # # customer join orders
+    # cus_custKey   = DBSchema('cus_custKey', [('C_CUSTKEY', 'int')])
+    # ord_custKey   = DBSchema('ord_custKey', [('O_CUSTKEY', 'int')])
+    #
+    # # orders join lineitem
+    # ord_orderKey  = DBSchema('ord_orderKey', [('O_ORDERKEY', 'int')])
+    # line_orderKey = DBSchema('line_orderKey', [('L_ORDERKEY', 'int')])
+    #
+    # # lineitem join part
+    # line_partKey  = DBSchema('line_partKey', [('L_PARTKEY'), 'int'])
+    # part_partKey  = DBSchema('part_partKey', [('P_PARTKEY'), 'int'])
+    #
+    # joinTables = db.query().fromTable(customer).join(
+    #     nation,
+    #     rhsSchema=db.relationSchema('nation'),
+    #     method='hash',
+    #     lhsHashFn='hash(C_NATIONKEY) % 4', lhsKeySchema=cus_nationKey,
+    #     rhsHashFn='hash(N_NATIONKEY) % 4', rhsKeySchema=nat_nationKey
+    # ).join(
+    #     orders,
+    #     rhsSchema=db.relationSchema('orders'),
+    #     method='hash',
+    #     lhsHashFn='hash(C_CUSTKEY) % 4', lhsKeySchema=cus_custKey,
+    #     rhsHashFn='hash(O_CUSTKEY) % 4', rhsKeySchema=ord_custKey
+    # ).join(
+    #     lineitem,
+    #     rhsSchema=db.relationSchema('lineitem'),
+    #     method='hash',
+    #     lhsHashFn='hash(O_ORDERKEY) % 4', lhsKeySchema=ord_orderKey,
+    #     rhsHashFn='hash(L_ORDERKEY) % 4', rhsKeySchema=line_orderKey
+    # ).join(
+    #     part,
+    #     rhsSchema=db.relationSchema('part'),
+    #     method='hash',
+    #     lhsHashFn='hash(L_PARTKEY) % 4', lhsKeySchema=line_partKey,
+    #     rhsHashFn='hash(P_PARTKEY) % 4', rhsKeySchema=part_partKey
+    # )
+    #
+    #
+    # # first group by
+    # groupSchema   = DBSchema('nation_part_name', [('N_NAME', 'char(55)'), ('P_NAME', 'char(55)')])
+    # aggSumSchema  = DBSchema('nation_part_sum', [('num', 'int')])
+    #
     # groupBy = joinTables.groupBy(
     #     groupSchema=groupSchema,
     #     aggSchema=aggSumSchema,
@@ -257,10 +257,10 @@ if __name__=="__main__":
     #     aggExprs=[(0, lambda acc, e: acc + e.L_QUANTITY, lambda x: x)],
     #     groupHashFn=(lambda gbVal: hash(gbVal[0]) % 10)
     # )
-
-    # second group by
-    groupSchema2  = DBSchema('nationMax', [('N_NAME', 'char(25)')])
-    aggMaxSchema  = DBSchema('aggMax', [('max', 'double')])
+    #
+    # # second group by
+    # groupSchema2  = DBSchema('nationMax', [('N_NAME', 'char(55)')])
+    # aggMaxSchema  = DBSchema('aggMax', [('max', 'int')])
     #
     # query2 = groupBy.groupBy(
     #     groupSchema=groupSchema2,
@@ -268,31 +268,12 @@ if __name__=="__main__":
     #     groupExpr=(lambda e: e.N_NAME),
     #     aggExprs=[(0, lambda acc, e: max(acc, e.num), lambda x: x)],
     #     groupHashFn=(lambda gbVal: hash(gbVal[0]) % 10)
-    # ).finalize()
-
-
-    # ====== second order of operators =====
-    groupBy2 = joinTables.groupBy(
-        groupSchema=groupSchema,
-        aggSchema=aggSumSchema,
-        groupExpr=(lambda e: (e.N_NAME, e.P_NAME)),
-        aggExprs=[(0, lambda acc, e: acc + e.L_QUANTITY, lambda x: x)],
-        groupHashFn=(lambda gbVal: hash(gbVal[0]) % 10)
-    ).select({'N_NAME': ('N_NAME', 'char(25)'), 'num': ('num', 'double')})
-
-    query2 = groupBy2.groupBy(
-        groupSchema=groupSchema2,
-        aggSchema=aggMaxSchema,
-        groupExpr=(lambda e: e.N_NAME),
-        aggExprs=[(0, lambda acc, e: max(acc, e.num), lambda x: x)],
-        groupHashFn=(lambda gbVal: hash(gbVal[0]) % 10)
-    ).finalize()
+    # )
 
 
     # execute query
-    print(time.time())
-    start = time.time()
-    result = getResult(db, query2)
-    end = time.time()
-    print("data:", len(result))
-    print("Time: ", end - start)
+    # start = time.time()
+    # result = getResult(db, query2)
+    # end = time.time()
+    # print("data:", len(result))
+    # print("Time: ", end - start)

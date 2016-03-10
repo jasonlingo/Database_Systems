@@ -1,0 +1,19 @@
+dataset 0.001
+    Query 1.
+        hash join: 82.76287245750427
+        block-nested join: 112.15825939178467
+
+    Query 2.
+
+
+    Query 3.
+
+dataset 0.01
+    Query 1.
+        hash join: 3010.7046897411346
+        block-nested join:
+
+    Query 2.
+    
+
+    Query 3.

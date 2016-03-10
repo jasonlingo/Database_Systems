@@ -1,0 +1,32 @@
+dataset 0.001
+    Query 1.
+        Hash: 82.76287245750427
+        BNJ: 112.15825939178467
+        SQLite: 0.017
+
+    Query 2.
+        Hash: 12.855971813201904
+        BNJ:  34.72383761405945
+        SQLite: 0.021
+        
+
+    Query 3.
+        Hash order 1: 1368.0099728107452
+        Hash order 2: 1963.438952445984
+        SQLite: 0.047
+
+
+
+dataset 0.01
+    Query 1.
+        Hash: 3010.7046897411346
+        BNJ:  9783.611874341965
+        SQLite: 0.017
+
+    Query 2.
+        Hash: 1004.539781332016
+        SQlite: 0.095
+
+
+    Query 3.
+        SQLite: 0.282
