@@ -352,7 +352,7 @@ class Join(Operator):
     _, partitionFile = self.storage.fileMgr.relationFile(relId)
     pageId = partitionFile.availablePage()
     page = self.storage.bufferPool.getPage(pageId)
-    page.insertTuple(tupleData)
+    partitionFile.insertTuple(tupleData)
 
   # Plan and statistics information
 

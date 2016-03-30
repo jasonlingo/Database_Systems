@@ -26,7 +26,7 @@ if __name__ == '__main__':
   #unittest.main(argv=[sys.argv[0], '-v'])
     db = Database.Database(dataDir='./data')
 
-    groupSchema  = DBSchema('p_partKey', [('P_NAME','char(55)')])
+    groupSchema  = DBSchema('p_partKey', [('p_name','char(55)')])
 
     rhsSchema = db.relationSchema('lineitem')
     lhsKeySchema = DBSchema('p_partKey', [('P_PARTKEY', 'int')])
@@ -47,7 +47,7 @@ if __name__ == '__main__':
       aggSchema=aggrSchema,
       groupExpr=(lambda  e: e.P_NAME),
       aggExprs=[(0, lambda acc, e: acc+1, lambda x: x)],
-      groupHashFn=(lambda gbVal: hash(gbVal[0]) % 2)
+      groupHashFn=(lambda gbVal: hash(gbVal[0]) % 300)
     ).finalize()
 
 
@@ -68,9 +68,9 @@ if __name__ == '__main__':
 
 
     start = time.time()
-    for page in db.processQuery(query2_hash):
+    for page in db.processQuery(query2):
       for tup in page[1]:
-        print (query2_hash.schema().unpack(tup), "\n")
+        print (query2.schema().unpack(tup), "\n")
     end = time.time()
 
     print ("time spent: ", end - start)

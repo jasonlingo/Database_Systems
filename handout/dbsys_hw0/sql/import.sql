@@ -22,11 +22,11 @@
 .import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/data-tpch-sf-0.001/nation.csv nation
 .import /Users/Jason/Dropbox/Courses/600.416 Database Systems/Assignments/datasets/hw0/data-tpch-sf-0.001/region.csv region
 
-.import /home/cs416/datasets/tpch-sf0.001/part.csv part
-.import /home/cs416/datasets/tpch-sf0.001/supplier.csv supplier
-.import /home/cs416/datasets/tpch-sf0.001/partsupp.csv partsupp
-.import /home/cs416/datasets/tpch-sf0.001/customer.csv customer
-.import /home/cs416/datasets/tpch-sf0.001/orders.csv orders
-.import /home/cs416/datasets/tpch-sf0.001/lineitem.csv lineitem
-.import /home/cs416/datasets/tpch-sf0.001/nation.csv nation
-.import /home/cs416/datasets/tpch-sf0.001/region.csv region
+.import /home/cs416/datasets/tpch-sf0.01/part.csv part
+.import /home/cs416/datasets/tpch-sf0.01/supplier.csv supplier
+.import /home/cs416/datasets/tpch-sf0.01/partsupp.csv partsupp
+.import /home/cs416/datasets/tpch-sf0.01/customer.csv customer
+.import /home/cs416/datasets/tpch-sf0.01/orders.csv orders
+.import /home/cs416/datasets/tpch-sf0.01/lineitem.csv lineitem
+.import /home/cs416/datasets/tpch-sf0.01/nation.csv nation
+.import /home/cs416/datasets/tpch-sf0.01/region.csv region
