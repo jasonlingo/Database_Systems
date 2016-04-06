@@ -78,7 +78,7 @@ class Optimizer:
       return self.pushdownSelect(op)
     else:
       print("Unmatched operatorType in pushdownOperator(): " + op.operatorType())
-      raise NotImplementedError
+      # raise NotImplementedError
 
   def pushdownProject(self, op):
     # First pushdown operators below:

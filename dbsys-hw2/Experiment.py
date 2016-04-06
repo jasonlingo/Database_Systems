@@ -1,77 +1,297 @@
 import Database
 from Catalog.Schema import DBSchema
-
-import sys
-import unittest
-
-import warnings
 import time
 
-class Hw2PublicTests(unittest.TestCase):
-  # Utilities
-  def setUp(self):
-    warnings.simplefilter("ignore", ResourceWarning)
+
+def getResult(db, query):
+    return [query.schema().unpack(tup) for page in db.processQuery(query) for tup in page[1]]
 
 
+if __name__=="__main__":
 
-  def tearDown(self):
-    # self.db.removeRelation('employee')
-    self.db.close()
-
-  def getResults(self, query):
-    return [query2.schema().unpack(tup) for page in self.db.processQuery(query2) for tup in page[1] ]
-
-
-if __name__ == '__main__':
-  #unittest.main(argv=[sys.argv[0], '-v'])
     db = Database.Database(dataDir='./data')
 
-    groupSchema  = DBSchema('p_partKey', [('p_name','char(55)')])
+    """
+    select p.p_name, s.s_name
+    from part p, supplier s, partsupp ps
+    where p.p_partkey = ps.ps_partkey
+    and ps.ps_suppkey = s.s_suppkey
+    and ps.ps_availqty = 1
+    union all
+    select p.p_name, s.s_name
+    from part p, supplier s, partsupp ps
+    where p.p_partkey = ps.ps_partkey
+      and ps.ps_suppkey = s.s_suppkey
+      and ps.ps_supplycost < 5;
+    """
 
-    rhsSchema = db.relationSchema('lineitem')
-    lhsKeySchema = DBSchema('p_partKey', [('P_PARTKEY', 'int')])
-    rhsKeySchema = DBSchema('lineitemKey', [('L_PARTKEY', 'int')])
+    """ Schema
+    supplier[(S_SUPPKEY,int),(S_NAME,char(25)),(S_ADDRESS,char(40)),(S_NATIONKEY,int),(S_PHONE,char(15)),(S_ACCTBAL,double),(S_COMMENT,char(101))]
 
-    aggrSchema = DBSchema('countschema',  [('count', 'int')])
+    part[(P_PARTKEY,int),(P_NAME,char(55)),(P_MFGR,char(25)),(P_BRAND,char(10)),(P_TYPE,char(25)),(P_SIZE,int),(P_CONTAINER,char(10)),(P_RETAILPRICE,double),(P_COMMENT,char(23))]
+
+    partsupp[(PS_PARTKEY,int),(PS_SUPPKEY,int),(PS_AVAILQTY,int),(PS_SUPPLYCOST,double),(PS_COMMENT,char(199))]
+    """
+
+    # part = db.query().fromTable('part')
+    # supplier = db.query().fromTable('supplier')
+    # partsupp = db.query().fromTable('partsupp')
+    #
+    # supplierSchema = db.relationSchema("supplier")
+    # partsuppSchema = db.relationSchema('partsupp')
+    #
+    # lhsKeySchema1 = DBSchema('pJoinKey',  [('P_PARTKEY', 'int')])
+    # rhsKeySchema1 = DBSchema('psJoinKey1', [('PS_PARTKEY', 'int')])
+    #
+    # lhsKeySchema2 = DBSchema('psJoinKey2',  [('PS_SUPPKEY', 'int')])
+    # rhsKeySchema2 = DBSchema('sJoinKey', [('S_SUPPKEY', 'int')])
+
+    # print(db.relationSchema('supplier').toString())
+    # print(db.relationSchema('part').toString())
+    # print(db.relationSchema('partsupp').toString())
 
 
-    query2 = db.query().fromTable('part').join(
-            db.query().fromTable('lineitem').where("L_RETURNFLAG == 'R'"),
-            rhsSchema=rhsSchema,
-            method = 'block-nested-loops',
-            expr='P_PARTKEY == L_PARTKEY'
-            # lhsHashFn='hash(id) % 4',  lhsKeySchema=keySchema, \
-            # rhsHashFn='hash(id2) % 4', rhsKeySchema=keySchema2, \
-    ).groupBy(
-      groupSchema=groupSchema,
-      aggSchema=aggrSchema,
-      groupExpr=(lambda  e: e.P_NAME),
-      aggExprs=[(0, lambda acc, e: acc+1, lambda x: x)],
-      groupHashFn=(lambda gbVal: hash(gbVal[0]) % 300)
+
+    # =======================================
+    # Question 1
+    # =======================================
+
+    # ========== block-nested join ==========
+    # query1 = db.query().fromTable('part')\
+    #             .join(db.query().fromTable('partsupp'),
+    #                   rhsSchema=db.relationSchema('partsupp'),
+    #                   method='block-nested-loops',
+    #                   expr='P_PARTKEY == PS_PARTKEY'
+    #             )\
+    #             .join(db.query().fromTable('supplier'),
+    #                   rhsSchema=db.relationSchema('supplier'),
+    #                   method='block-nested-loops',
+    #                   expr='PS_SUPPKEY == S_SUPPKEY'
+    #                   )\
+    #             .where('PS_AVAILQTY == 1')\
+    #          .union(\
+    #             db.query().fromTable('part')\
+    #             .join(db.query().fromTable('partsupp'),
+    #                   rhsSchema=db.relationSchema('partsupp'),
+    #                   method='block-nested-loops',
+    #                   expr='P_PARTKEY == PS_PARTKEY'
+    #             )\
+    #             .join(db.query().fromTable('supplier'),
+    #                   rhsSchema=db.relationSchema('supplier'),
+    #                   method='block-nested-loops',
+    #                   expr='PS_SUPPKEY == S_SUPPKEY'
+    #                   )\
+    #             .where('PS_SUPPLYCOST < 5'))\
+    #             .select({'P_NAME': ('P_NAME', 'char(55)'), 'S_NAME': ('S_NAME', 'char(25)')}).finalize()
+
+
+
+
+
+    # ========== hash join ==========
+    # query1 = part.join(partsupp,
+    #                   rhsSchema=partsuppSchema,
+    #                   method='hash',
+    #                   lhsHashFn='hash(P_PARTKEY) % 4',  lhsKeySchema=lhsKeySchema1,
+    #                   rhsHashFn='hash(PS_PARTKEY) % 4', rhsKeySchema=rhsKeySchema1,
+    #             )\
+    #             .join(supplier,
+    #                   rhsSchema=supplierSchema,
+    #                   method='hash',
+    #                   lhsHashFn='hash(PS_SUPPKEY) % 4',  lhsKeySchema=lhsKeySchema2,
+    #                   rhsHashFn='hash(S_SUPPKEY) % 4', rhsKeySchema=rhsKeySchema2,
+    #             )\
+    #             .where('PS_AVAILQTY == 1')\
+    #             .select({'p_name': ('P_NAME', 'char(55)'), 's_name': ('S_NAME', 'char(25)')})\
+    #          .union(
+    #             part.join(partsupp,
+    #                   rhsSchema=partsuppSchema,
+    #                   method='hash',
+    #                   lhsHashFn='hash(P_PARTKEY) % 4',  lhsKeySchema=lhsKeySchema1,
+    #                   rhsHashFn='hash(PS_PARTKEY) % 4', rhsKeySchema=rhsKeySchema1,
+    #             )\
+    #             .join(supplier,
+    #                   rhsSchema=supplierSchema,
+    #                   method='hash',
+    #                   lhsHashFn='hash(PS_SUPPKEY) % 4',  lhsKeySchema=lhsKeySchema2,
+    #                   rhsHashFn='hash(S_SUPPKEY) % 4', rhsKeySchema=rhsKeySchema2,
+    #                   )\
+    #             .where('PS_SUPPLYCOST < 5')\
+    #             .select({'p_name': ('P_NAME', 'char(55)'), 's_name': ('S_NAME', 'char(25)')}))\
+    #             .finalize()
+
+
+
+
+
+
+    # partsuppSchema = db.relationSchema('partsupp')
+    # supplierSchema = db.relationSchema('supplier')
+    #
+    # keySchemaPart = DBSchema('partKey', [('P_PARTKEY', 'int')])
+    # keySchemaPartsupp1 = DBSchema('partsuppKey1', [('PS_PARTKEY', 'int')])
+    # keySchemaPartsupp2 = DBSchema('partsuppKey2', [('PS_SUPPKEY', 'int')])
+    # keySchemaSupplier = DBSchema('supplierKey', [('S_SUPPKEY', 'int')])
+    #
+    # part = db.query().fromTable('part')
+    # supplier = db.query().fromTable('supplier')
+    # partsupp = db.query().fromTable('partsupp')
+
+    # join1 = part.join(
+    #             partsupp,
+    #             rhsSchema=partsuppSchema,
+    #             method='hash',
+    #             lhsHashFn='hash(P_PARTKEY) % 4', lhsKeySchema=keySchemaPart,
+    #             rhsHashFn='hash(PS_PARTKEY) % 4', rhsKeySchema=keySchemaPartsupp1
+    #         ).join(
+    #             supplier,
+    #             rhsSchema = supplierSchema,
+    #             method = 'hash',
+    #             lhsHashFn='hash(PS_SUPPKEY) % 4', lhsKeySchema=keySchemaPartsupp2,
+    #             rhsHashFn = 'hash(S_SUPPKEY) % 4', rhsKeySchema=keySchemaSupplier
+    #         ).where('PS_AVAILQTY == 1').select({'p_name': ('P_NAME', 'char(55)'), 's_name': ('S_NAME', 'char(25)')})
+    #
+    # join2 = part.join(
+    #             partsupp,
+    #             rhsSchema = partsuppSchema,
+    #             method = 'hash',
+    #             lhsHashFn='hash(P_PARTKEY) % 4', lhsKeySchema=keySchemaPart,
+    #             rhsHashFn = 'hash(PS_PARTKEY) % 4', rhsKeySchema=keySchemaPartsupp1
+    #         ).join(
+    #             supplier,
+    #             rhsSchema = supplierSchema,
+    #             method = 'hash',
+    #             lhsHashFn='hash(PS_SUPPKEY) % 4', lhsKeySchema=keySchemaPartsupp2,
+    #             rhsHashFn = 'hash(S_SUPPKEY) % 4', rhsKeySchema=keySchemaSupplier
+    #             ).where('PS_SUPPLYCOST < 5').select({'p_name': ('P_NAME', 'char(55)'), 's_name': ('S_NAME', 'char(25)')})
+    #
+    # query1 = join1.union(join2).finalize()
+
+
+    # =======================================
+    # Question 3
+    # =======================================
+
+    """ original SQL query
+    with temp as (
+    select n.n_name as nation, p.p_name as part, sum(l.l_quantity) as num
+    from customer c, nation n, orders o, lineitem l, part p
+    where c.c_nationkey = n.n_nationkey
+      and c.c_custkey = o.o_custkey
+      and o.o_orderkey = l.l_orderkey
+      and l.l_partkey = p.p_partkey
+    group by n.n_name, p.p_name
+    )
+
+    select nation, max(num)
+    from temp
+    group by nation;
+    """
+
+    # tables
+    customer = db.query().fromTable('customer')
+    nation   = db.query().fromTable('nation')
+    orders   = db.query().fromTable('orders')
+    lineitem = db.query().fromTable('lineitem')
+    part     = db.query().fromTable('part')
+
+    # print(customer.toString())
+    # print(nation.toString())
+    # print(orders.toString())
+    # print(lineitem.toString())
+    # print(part.toString())
+
+    # hash join
+    # customer join nation
+    cus_nationKey = DBSchema('cus_nationKey', [('C_NATIONKEY', 'int')])
+    nat_nationKey = DBSchema('nat_nationKey', [('N_NATIONKEY', 'int')])
+
+    # customer join orders
+    cus_custKey   = DBSchema('cus_custKey', [('C_CUSTKEY', 'int')])
+    ord_custKey   = DBSchema('ord_custKey', [('O_CUSTKEY', 'int')])
+
+    # orders join lineitem
+    ord_orderKey  = DBSchema('ord_orderKey', [('O_ORDERKEY', 'int')])
+    line_orderKey = DBSchema('line_orderKey', [('L_ORDERKEY', 'int')])
+
+    # lineitem join part
+    line_partKey  = DBSchema('line_partKey', [('L_PARTKEY', 'int')])
+    part_partKey  = DBSchema('part_partKey', [('P_PARTKEY', 'int')])
+
+    joinTables = customer.join(
+        nation,
+        rhsSchema=db.relationSchema('nation'),
+        method='hash',
+        lhsHashFn='hash(C_NATIONKEY) % 4', lhsKeySchema=cus_nationKey,
+        rhsHashFn='hash(N_NATIONKEY) % 4', rhsKeySchema=nat_nationKey
+    ).join(
+        orders,
+        rhsSchema=db.relationSchema('orders'),
+        method='hash',
+        lhsHashFn='hash(C_CUSTKEY) % 4', lhsKeySchema=cus_custKey,
+        rhsHashFn='hash(O_CUSTKEY) % 4', rhsKeySchema=ord_custKey
+    ).join(
+        lineitem,
+        rhsSchema=db.relationSchema('lineitem'),
+        method='hash',
+        lhsHashFn='hash(O_ORDERKEY) % 4', lhsKeySchema=ord_orderKey,
+        rhsHashFn='hash(L_ORDERKEY) % 4', rhsKeySchema=line_orderKey
+    ).join(
+        part,
+        rhsSchema=db.relationSchema('part'),
+        method='hash',
+        lhsHashFn='hash(L_PARTKEY) % 4', lhsKeySchema=line_partKey,
+        rhsHashFn='hash(P_PARTKEY) % 4', rhsKeySchema=part_partKey
+    )
+
+
+    # first group by
+    groupSchema   = DBSchema('nation_part_name', [('N_NAME', 'char(25)'), ('P_NAME', 'char(55)')])
+    aggSumSchema  = DBSchema('nation_part_sum', [('num', 'double')])
+
+    # groupBy = joinTables.groupBy(
+    #     groupSchema=groupSchema,
+    #     aggSchema=aggSumSchema,
+    #     groupExpr=(lambda e: (e.N_NAME, e.P_NAME)),
+    #     aggExprs=[(0, lambda acc, e: acc + e.L_QUANTITY, lambda x: x)],
+    #     groupHashFn=(lambda gbVal: hash(gbVal[0]) % 10)
+    # )
+
+    # second group by
+    groupSchema2  = DBSchema('nationMax', [('N_NAME', 'char(25)')])
+    aggMaxSchema  = DBSchema('aggMax', [('max', 'double')])
+    #
+    # query2 = groupBy.groupBy(
+    #     groupSchema=groupSchema2,
+    #     aggSchema=aggMaxSchema,
+    #     groupExpr=(lambda e: e.N_NAME),
+    #     aggExprs=[(0, lambda acc, e: max(acc, e.num), lambda x: x)],
+    #     groupHashFn=(lambda gbVal: hash(gbVal[0]) % 10)
+    # ).finalize()
+
+
+    # ====== second order of operators =====
+    groupBy2 = joinTables.groupBy(
+        groupSchema=groupSchema,
+        aggSchema=aggSumSchema,
+        groupExpr=(lambda e: (e.N_NAME, e.P_NAME)),
+        aggExprs=[(0, lambda acc, e: acc + e.L_QUANTITY, lambda x: x)],
+        groupHashFn=(lambda gbVal: hash(gbVal[0]) % 10)
+    ).select({'N_NAME': ('N_NAME', 'char(25)'), 'num': ('num', 'double')})
+
+    query2 = groupBy2.groupBy(
+        groupSchema=groupSchema2,
+        aggSchema=aggMaxSchema,
+        groupExpr=(lambda e: e.N_NAME),
+        aggExprs=[(0, lambda acc, e: max(acc, e.num), lambda x: x)],
+        groupHashFn=(lambda gbVal: hash(gbVal[0]) % 10)
     ).finalize()
 
 
-
-    query2_hash = db.query().fromTable('part').join(
-            db.query().fromTable('lineitem').where("L_RETURNFLAG == 'R'"),
-            rhsSchema=rhsSchema,
-            method = 'hash',
-            lhsHashFn='hash(P_PARTKEY) % 4',  lhsKeySchema=lhsKeySchema, \
-            rhsHashFn='hash(L_PARTKEY) % 4', rhsKeySchema=rhsKeySchema, \
-    ).groupBy(
-      groupSchema=groupSchema,
-      aggSchema=aggrSchema,
-      groupExpr=(lambda  e: e.P_NAME),
-      aggExprs=[(0, lambda acc, e: acc+1, lambda x: x)],
-      groupHashFn=(lambda gbVal: hash(gbVal[0]) % 2)
-    ).finalize()
-
-
+    # execute query
+    print(time.time())
     start = time.time()
-    for page in db.processQuery(query2):
-      for tup in page[1]:
-        print (query2.schema().unpack(tup), "\n")
+    result = getResult(db, query2)
     end = time.time()
-
-    print ("time spent: ", end - start)
-    # print (db.relationSchema("lineitem").toString());
+    print("data:", len(result))
+    print("Time: ", end - start)

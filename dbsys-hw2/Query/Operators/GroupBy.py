@@ -110,7 +110,8 @@ class GroupBy(Operator):
       for i in range(len(finalFuncs)):
         aggregateData[key][i] = list(map(finalFuncs[i], [aggregateData[key][i]]))[0]
 
-      param = [key] + aggregateData[key]
+      param = list(key) if isinstance(key, tuple) else [key]
+      param += aggregateData[key]
       newTuple = self.schema().instantiate(*param)
       self.emitOutputTuple(self.schema().pack(newTuple))
 
@@ -146,8 +147,6 @@ class GroupBy(Operator):
       relId = self.partitionFiles[groupId]
 
     _, partitionFile = self.storage.fileMgr.relationFile(relId)
-    pageId = partitionFile.availablePage()
-    page = self.storage.bufferPool.getPage(pageId)
     partitionFile.insertTuple(tupleData)
 
   # Plan and statistics information

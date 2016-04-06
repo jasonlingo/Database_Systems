@@ -311,7 +311,6 @@ class PlanBuilder:
       TableScan[...,cost=...](employee)
 
   >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
-  >>> print(q7results)
 
 
   # Populate employees relation with another 10000 tuples

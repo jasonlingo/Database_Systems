@@ -160,8 +160,8 @@ class Sort(Operator):
     relId = self.partitionFiles[-1]
 
     _, file = self.storage.fileMgr.relationFile(relId)
-    pageId = file.availablePage()
-    page = self.storage.bufferPool.getPage(pageId)
+    # pageId = file.availablePage()
+    # page = self.storage.bufferPool.getPage(pageId)
     for tup in tuples:
       file.insertTuple(self.schema().pack(tup))
 
