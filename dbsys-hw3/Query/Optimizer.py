@@ -145,7 +145,7 @@ class Optimizer:
       return result
     else:
       print("Unmatched operatorType in pushdownOperator(): " + op.operatorType())
-      raise NotImplementedError
+      # raise NotImplementedError
 
   def pushdownSelect(self, op):
     # First pushdown operators below:
@@ -220,7 +220,7 @@ class Optimizer:
       return result
     else:
       print("Unmatched operatorType in pushdownOperator(): " + op.operatorType())
-      raise NotImplementedError
+      # raise NotImplementedError
 
   # Returns an optimized query plan with joins ordered via a System-R style
   # dyanmic programming algorithm. The plan cost should be compared with the
@@ -313,7 +313,7 @@ class Optimizer:
   # This should perform operation pushdown, followed by join order selection.
   def optimizeQuery(self, plan):
     pushedDown_plan = self.pushdownOperators(plan)
-    joinPicked_plan = self.pickJoinOrder(plan)
+    joinPicked_plan = self.pickJoinOrder(pushedDown_plan)
 
     return joinPicked_plan
 
