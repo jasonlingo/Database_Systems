@@ -113,13 +113,8 @@ class Optimizer:
 
   >>> print (query5.explain())
 
-  >>> print (query5.schema())
-
   >>> q5results2 = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
   >>> [(tup.id) for tup in q5results2]
-
-
-
   """
 
   def __init__(self, db):
@@ -224,6 +219,19 @@ class Optimizer:
         if rhsProjectExprs:
           op.subPlan.rhsPlan = self.pushdownOperator(Project(op.subPlan.rhsPlan, rhsProjectExprs))
 
+
+      if op.subPlan.lhsPlan.operatorType() == "UnionAll":
+        op.subPlan.lhsPlan.validateSchema()
+
+      op.subPlan.lhsSchema = op.subPlan.lhsPlan.schema()
+
+      if op.subPlan.rhsPlan.operatorType() == "UnionAll":
+        op.subPlan.rhsSchema = op.subPlan.rhsPlan.validateSchema()
+
+      op.subPlan.rhsSchema = op.subPlan.rhsPlan.schema()
+
+      op.subPlan.initializeSchema()
+
       result = op
       # Remove op from the tree if there are no remaining project expressions, and each side of the join recieved a projection
       if not remainingProjectExprs and lhsProjectExprs and rhsProjectExprs:
@@ -322,20 +330,23 @@ class Optimizer:
   # - As stated somewhere else, all attribute names must be globally unique.
   def pickJoinOrder(self, plan):
     # Extract all base relations, along with any unary operators immediately above.
-    base_relations = set(plan.relations())
+    print ("begin picking join order")
+    base_relations = set(plan.sources)
 
     # Extract all joins in original plan, they serve as the set of joins actually necessary.
+    joins = set(plan.joins)
+    # joins = set()
+    # for (_, plan) in plan.flatten():
+    #   if ("Join" in plan.operatorType()):
+    #     joins.add(plan)
 
-    joins = set()
-    for (_, plan) in plan.flatten():
-      if ("Join" in plan.operatorType()):
-        joins.add(plan)
     # Define the dynamic programming table.
     optimal_plans = {}
 
     # Establish optimal access paths.
     for relation in base_relations:
       optimal_plans[frozenset((relation,))] = relation
+      print ('relation type', type(relation))
 
     # Fill in the table.
     for i in range(2, len(base_relations) + 1):
