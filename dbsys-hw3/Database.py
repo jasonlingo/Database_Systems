@@ -120,7 +120,7 @@ class Database:
 
   # Returns an optimized version of the given query plan.
   def optimizeQuery(self, queryPlan):
-    return optimizer.optimizeQuery(queryPlan)
+    return Optimizer.optimizeQuery(queryPlan)
 
   # Save the database internals to the data directory.
   def checkpoint(self):

@@ -42,7 +42,7 @@ class Plan:
     else:
       raise ValueError("No root operator specified for query plan")
 
-  def fromOther(self):
+  def fromOther(self, other):
     self.root = other.root
     self.cardinality = other.cardinality
 
