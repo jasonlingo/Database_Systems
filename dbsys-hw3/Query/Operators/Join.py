@@ -340,6 +340,18 @@ class Join(Operator):
 
   # Plan and statistics information
 
+  # ===================================================
+  # customized cost for Join operator
+  # ===================================================
+
+  def cost(self, estimated):
+    subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
+    return self.localCost(estimated) + subPlanCost
+
+  def localCost(self, estimated):
+    numInputs = sum(map(lambda x: x.cardinality(estimated), self.inputs()))
+    return numInputs * self.tupleCost
+
   # Returns a single line description of the operator.
   def explain(self):
     if self.joinMethod == "nested-loops" or self.joinMethod == "block-nested-loops":
