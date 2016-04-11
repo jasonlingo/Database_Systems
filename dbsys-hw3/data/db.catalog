@@ -1,1 +1,0 @@
-[{"department": {"__pytype__": "DBSchema", "name": "department", "schema": [["did", "int"], ["eid", "int"]]}, "employee": {"__pytype__": "DBSchema", "name": "employee", "schema": [["id", "int"], ["age", "int"]]}, "salarys": {"__pytype__": "DBSchema", "name": "salarys", "schema": [["id", "int"], ["salary", "int"]]}}, 8192]

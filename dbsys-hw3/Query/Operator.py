@@ -48,7 +48,6 @@ class Operator:
   def deep_max_arity(self):
     return max([self.arity] + [op.arity for op in self.inputs()])
 
-
   # Prepares the operator for execution.
   def prepare(self, database):
     self.storage = database.storageEngine()
@@ -149,6 +148,8 @@ class Operator:
   # Instructs this operator to perform sampling during execution.
   # This propagates the sampling rate over all of our children.
   def useSampling(self, sampled, sampleFactor):
+    if sampled:
+      self.initializeStatistics()
     self.sampled = sampled
     self.sampleFactor = sampleFactor
     for childOp in self.inputs():
@@ -170,10 +171,11 @@ class Operator:
     return numOutputs / numInputs
 
   # Returns the cost of this operator in terms of a dimensionless
-  # metric (e.g., number of I/Os, CPU cycles, etc). This is also either
+  # metric (e.g., number of I/O s, CPU cycles, etc). This is also either
   # as an estimate or a profiled actual cost.
   def cost(self, estimated):
     subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
+    # print ("local cost", self.localCost(estimated))
     return self.localCost(estimated) + subPlanCost
 
   def localCost(self, estimated):

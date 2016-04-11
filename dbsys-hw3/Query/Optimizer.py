@@ -18,7 +18,7 @@ class Optimizer:
 
   This implements System-R style query optimization, using dynamic programming.
   We only consider left-deep plan trees here.
-
+  >>> import Database, shutil, Storage
   >>> import Database
   >>> db = Database.Database()
   # >>> try:
@@ -30,7 +30,9 @@ class Optimizer:
 
   >>> db.createRelation('department', [('did', 'int'), ('eid', 'int')])
   >>> db.createRelation('employee', [('id', 'int'), ('age', 'int')])
-  >>> db.createRelation('salarys', [('id', 'int'), ('salary', 'int')])
+  >>> db.createRelation('salarys', [('sid', 'int'), ('salary', 'int')])
+  >>> db.createRelation('work', [('wid', 'int'), ('ewid', 'int')])
+
 
  # Populate relation
   >>> schema = db.relationSchema('employee')
@@ -48,6 +50,11 @@ class Optimizer:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
+  >>> schema = db.relationSchema('work')
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
+  ...    _ = db.insertTuple(schema.name, tup)
+  ...
+
   # >>> query4 = db.query().fromTable('employee').join( \
   #       db.query().fromTable('department'), \
   #       method='block-nested-loops', expr='id == eid') \
@@ -57,25 +64,25 @@ class Optimizer:
 
 
 
-  >>> query4 = db.query().fromTable('employee')\
-        .where('id < 10 and id > 0') \
-        .select({'id': ('id', 'int')}).finalize()
-
-
-  >>> print (query4.explain())
-
-  >>> q4results = [query4.schema().unpack(tup) for page in db.processQuery(query4) for tup in page[1]]
-  >>> [(tup.id) for tup in q4results] #doctest:+ELLIPSIS
-  ...
-
-  # >>> db.optimizer.pickJoinOrder(query4)
-  >>> query4 = db.optimizer.pushdownOperators(query4)
-
-  >>> print (query4.explain())
-
-  >>> q4results = [query4.schema().unpack(tup) for page in db.processQuery(query4) for tup in page[1]]
-  >>> [(tup.id) for tup in q4results] #doctest:+ELLIPSIS
-  ...
+  # >>> query4 = db.query().fromTable('employee')\
+  #       .where('id < 10 and id > 0') \
+  #       .select({'id': ('id', 'int')}).finalize()
+  #
+  #
+  # >>> print (query4.explain())
+  #
+  # >>> q4results = [query4.schema().unpack(tup) for page in db.processQuery(query4) for tup in page[1]]
+  # >>> [(tup.id) for tup in q4results] #doctest:+ELLIPSIS
+  # ...
+  #
+  # # >>> db.optimizer.pickJoinOrder(query4)
+  # >>> query4 = db.optimizer.pushdownOperators(query4)
+  #
+  # >>> print (query4.explain())
+  #
+  # >>> q4results = [query4.schema().unpack(tup) for page in db.processQuery(query4) for tup in page[1]]
+  # >>> [(tup.id) for tup in q4results] #doctest:+ELLIPSIS
+  # ...
 
 
 # SELECT id, eid FROM employee, department WHERE employee.eid = department.id
@@ -94,7 +101,7 @@ class Optimizer:
         db.query().fromTable('department'), \
         method='block-nested-loops', expr='eid == id')\
         .where('eid > 0 and id > 0')\
-        .select({'id': ('id', 'int'), 'eid':('eid','int')}).finalize()
+        .select({'eid':('eid','int')}).finalize()
 
 
   # >>> query5 = db.query().fromTable('employee').select({'id': ('id', 'int')}).where('id > 0').union(db.query().fromTable('employee').select({'id': ('id', 'int')}).where('id > 0')).join( \
@@ -103,18 +110,105 @@ class Optimizer:
   #       .finalize()
 
 
-  >>> print (query5.explain())
+  # >>> print (query5.explain())
+  #
+  # >>> q5results = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
+  # >>> [(tup.eid) for tup in q5results]
+  #
+  # >>> query5 = db.optimizer.pushdownOperators(query5)
+  # # >>> query5 = db.optimizer.pickJoinOrder(query5)
+  #
+  # >>> print (query5.explain())
+  #
+  # >>> q5results2 = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
+  # >>> [(tup.eid) for tup in q5results2]
 
-  >>> q5results = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
-  >>> [(tup.id) for tup in q5results]
+  # >>> query6 = db.query().fromTable('employee').join(\
+  #       db.query().fromTable('department').select({'eid':('eid','int')}),\
+  #      method='block-nested-loops', expr='id == eid').join(\
+  #      db.query().fromTable('salarys'),\
+  #      method='block-nested-loops', expr='sid == id').where('sid > 9').select({'age':('age', 'int')}).finalize()
+  #
+  # # >>> query6 = db.query().fromTable('employee').join(\
+  # #       db.query().fromTable('department'),\
+  # #      method='block-nested-loops', expr='id == eid').select({'fuck':('id', 'int')}).finalize()
+  #
+  # >>> q6results = [query6.schema().unpack(tup) for page in db.processQuery(query6) for tup in page[1]]
+  # >>> [(tup) for tup in q6results]
+  #
+  # >>> query6.sample(1.0)
+  #
+  # >>> q6results = [query6.schema().unpack(tup) for page in db.processQuery(query6) for tup in page[1]]
+  # >>> [(tup) for tup in q6results]
+  #
+  # >>> print (query6.explain())
 
-  >>> query5 = db.optimizer.pushdownOperators(query5)
-  # >>> query5 = db.optimizer.pickJoinOrder(query5)
+  >>> query6 = db.query().fromTable('employee').join(\
+        db.query().fromTable('department').select({'eid':('eid','int')}),\
+       method='block-nested-loops', expr='id == eid').join(\
+       db.query().fromTable('salarys'),\
+       method='block-nested-loops', expr='sid == id').where('sid > 9').select({'age':('age', 'int')}).finalize()
 
-  >>> print (query5.explain())
 
-  >>> q5results2 = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
-  >>> [(tup.id) for tup in q5results2]
+  >>> query6 = db.optimizer.optimizeQuery(query6)
+
+  >>> print (query6.explain())
+
+  >>> q6results = [query6.schema().unpack(tup) for page in db.processQuery(query6) for tup in page[1]]
+  >>> [(tup) for tup in q6results]
+
+###
+  #
+  # >>> schema = db.relationSchema('work')
+  # >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
+  # ...   _ = db.insertTuple(schema.name, tup)
+  # ...
+  #
+  # >>> query6 = db.query().fromTable('employee').join(\
+  #       db.query().fromTable('department').select({'eid':('eid','int')}),\
+  #      method='block-nested-loops', expr='id == eid').where('age > 0').join(\
+  #      db.query().fromTable('salarys'),\
+  #      method='block-nested-loops', expr='sid == id').where('id > 0').select({'id':('id', 'int')})\
+  #      .union(\
+  #      db.query().fromTable('employee').join(\
+  #       db.query().fromTable('department').select({'eid':('eid','int')}),\
+  #      method='block-nested-loops', expr='id == eid').where('age > 0').join(\
+  #      db.query().fromTable('salarys'),\
+  #      method='block-nested-loops', expr='sid == id').where('id > 0').select({'id':('id', 'int')})\
+  #      ).finalize()
+  #
+  #
+  # >>> query7 = db.query().fromTable('employee').join(\
+  #       db.query().fromTable('department').select({'eid':('eid','int')}),\
+  #      method='block-nested-loops', expr='id == eid').join(\
+  #      db.query().fromTable('salarys'),\
+  #      method='block-nested-loops', expr='sid == id').where('sid > 0').select({'age':('age', 'int')}).finalize()
+  #
+  # >>> query7.sample(1.0)
+  # >>> print(query7.explain())
+  # >>> q7results = [query6.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
+  # >>> print([tup for tup in q7results])
+  #
+  # >>> query8 = db.query().fromTable('employee').join(\
+  #       db.query().fromTable('department').select({'eid':('eid','int')}),\
+  #      method='block-nested-loops', expr='id == eid').join(\
+  #      db.query().fromTable('salarys'),\
+  #      method='block-nested-loops', expr='sid == id').where('sid > 0').select({'age':('age', 'int')}).finalize()
+  #
+  # >>> query8 = db.optimizer.optimizeQuery(query8)
+  # # >>> query8 = db.optimizer.pickJoinOrder2(query8)
+  #
+  # >>> print (query8.explain())
+  #
+  # >>> query8.sample(1.0)
+  #
+  # >>> print(query8.explain())
+  # >>> q8results = [query8.schema().unpack(tup) for page in db.processQuery(query8) for tup in page[1]]
+  # >>> print([tup for tup in q8results])
+  #
+
+
+  >>> shutil.rmtree(Storage.FileManager.FileManager.defaultDataDir)
   """
 
   def __init__(self, db):
@@ -218,16 +312,16 @@ class Optimizer:
           op.subPlan.lhsPlan = self.pushdownOperator(Project(op.subPlan.lhsPlan, lhsProjectExprs))
         if rhsProjectExprs:
           op.subPlan.rhsPlan = self.pushdownOperator(Project(op.subPlan.rhsPlan, rhsProjectExprs))
-
+      else:
+        return op
 
       if op.subPlan.lhsPlan.operatorType() == "UnionAll":
         op.subPlan.lhsPlan.validateSchema()
 
-      op.subPlan.lhsSchema = op.subPlan.lhsPlan.schema()
-
       if op.subPlan.rhsPlan.operatorType() == "UnionAll":
-        op.subPlan.rhsSchema = op.subPlan.rhsPlan.validateSchema()
+        op.subPlan.rhsPlan.validateSchema()
 
+      op.subPlan.lhsSchema = op.subPlan.lhsPlan.schema()
       op.subPlan.rhsSchema = op.subPlan.rhsPlan.schema()
 
       op.subPlan.initializeSchema()
@@ -328,9 +422,10 @@ class Optimizer:
   # - There are no joins whose expressions reference attributes from more than two relations. That
   #   is, only binary joins.
   # - As stated somewhere else, all attribute names must be globally unique.
+
   def pickJoinOrder(self, plan):
+    root = plan.root
     # Extract all base relations, along with any unary operators immediately above.
-    print ("begin picking join order")
     base_relations = set(plan.sources)
 
     # Extract all joins in original plan, they serve as the set of joins actually necessary.
@@ -346,7 +441,6 @@ class Optimizer:
     # Establish optimal access paths.
     for relation in base_relations:
       optimal_plans[frozenset((relation,))] = relation
-      print ('relation type', type(relation))
 
     # Fill in the table.
     for i in range(2, len(base_relations) + 1):
@@ -364,9 +458,14 @@ class Optimizer:
         optimal_plans[frozenset(subset)] = self.get_best_join(candidate_joins, joins)
 
     # Reconstruct the best plan, prepare and return.
-    final_plan = Plan(root = optimal_plans[frozenset(base_relations)])
-    final_plan.prepare(self.db)
-    return final_plan
+
+    while not "Join" in root.subPlan.operatorType():
+      root = root.subPlan
+
+    # final_plan = Plan(root = optimal_plans[frozenset(base_relations)])
+    # final_plan.prepare(self.db)
+    root.subPlan = optimal_plans[frozenset(base_relations)]
+    return plan
 
   def get_best_join(self, candidates, required_joins):
     best_plan_cost = None
@@ -379,15 +478,15 @@ class Optimizer:
       # cartesian product.
       for join in required_joins:
         names = ExpressionInfo(join.joinExpr).getAttributes()
-        if set(join.rhsSchema.fields).intersection(names) and set(join.lhsSchema.fields).intersection(names):
+        if set(right.schema().fields).intersection(names) and set(left.schema().fields).intersection(names):
           relevant_expr = join.joinExpr
           break
-      else:
-        relevant_expr = 'True'
+        else:
+          relevant_expr = 'True'
 
       # Construct a join plan for the current candidate, for each possible join algorithm.
       # TODO: Evaluate more than just nested loop joins, and determine feasibility of those methods.
-      for algorithm in ["nested-loops", "block-nested-loops"]:
+      for algorithm in ["nested-loops","block-nested-loops"]:
         test_plan = Plan(root = Join(
           lhsPlan = left,
           rhsPlan = right,
