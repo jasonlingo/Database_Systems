@@ -485,14 +485,25 @@ class Optimizer:
           relevant_expr = 'True'
 
       # Construct a join plan for the current candidate, for each possible join algorithm.
-      # TODO: Evaluate more than just nested loop joins, and determine feasibility of those methods.
-      for algorithm in ["nested-loops","block-nested-loops"]:
-        test_plan = Plan(root = Join(
-          lhsPlan = left,
-          rhsPlan = right,
-          method = algorithm,
-          expr = relevant_expr
-        ))
+      for algorithm in ["nested-loops","block-nested-loops","hash","indexed"]:
+        if algorithm in ["nested-loops","block-nested-loops"]:
+          test_plan = Plan(root = Join(
+            lhsPlan = left,
+            rhsPlan = right,
+            method = algorithm,
+            expr = relevant_expr
+          ))
+        else:
+          continue
+        # elif algorithm == "hash":
+        #   test_plan = Plan(root = Join(
+        #     lhsPlan=left,
+        #     rhsPlan=right,
+        #     method=algorithm,
+        #     # lhsHashFn='hash(id) % 4',  lhsKeySchema=keySchema, \
+        #     # rhsHashFn='hash(id2) % 4', rhsKeySchema=keySchema2, \
+        #   ))
+        #   continue
 
         # Prepare and run the plan in sampling mode, and get the estimated cost.
         test_plan.prepare(self.db)
