@@ -15,6 +15,7 @@ class GroupBy(Operator):
     self.groupExpr   = kwargs.get("groupExpr", None)
     self.aggExprs    = kwargs.get("aggExprs", None)
     self.groupHashFn = kwargs.get("groupHashFn", None)
+    self.estimatedCardinality = 0
 
     self.validateGroupBy()
     self.initializeSchema()
@@ -163,5 +164,12 @@ class GroupBy(Operator):
 
   # Returns a single line description of the operator.
   def explain(self):
-    return super().explain() + "(groupSchema=" + self.groupSchema.toString() \
-                             + ", aggSchema=" + self.aggSchema.toString() + ")"
+    return super().explain() + self.conciseExplain()
+
+  def conciseExplain(self):
+    return "(groupSchema=" + self.groupSchema.toString() + ", aggSchema=" + self.aggSchema.toString() + ")"
+
+  def cost(self, estimated):
+
+
+    return super.cost()

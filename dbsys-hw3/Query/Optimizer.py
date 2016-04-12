@@ -8,7 +8,7 @@ from Query.Operators.Select import Select
 from Query.Operators.Union import Union
 from Query.Operators.TableScan import TableScan
 from Utils.ExpressionInfo import ExpressionInfo
-
+from Catalog.Schema import DBSchema
 
 # Helper for removing items from a tuple, while preserving order.
 def tuple_without(t, x):
@@ -97,7 +97,7 @@ class Optimizer:
 
   >>> query7.sample(1.0)
   >>> print(query7.explain())
-  >>> q7results = [query6.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
+  >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
   >>> print([tup for tup in q7results])
 
   >>> query8 = db.query().fromTable('employee').join(\
@@ -130,8 +130,6 @@ class Optimizer:
   #
   # >>> print( db.optimizer.optimizeQuery(query7).explain() )
 
-
-
   ## Clean up the doctest
   >>> shutil.rmtree(Storage.FileManager.FileManager.defaultDataDir)
   """
@@ -139,14 +137,20 @@ class Optimizer:
   def __init__(self, db):
     self.db = db
     self.statsCache = {}
+    self.costCache = {}
 
   # Caches the cost of a plan computed during query optimization.
   def addPlanCost(self, plan, cost):
-    raise NotImplementedError
+    self.costCache[plan] = cost
 
   # Checks if we have already computed the cost of this plan.
   def getPlanCost(self, plan):
-    raise NotImplementedError
+    key = plan.getPlanKey()
+    if key not in self.costCache:
+        plan.sample(1.0)
+        cost = plan.cost(estimated=True)
+        self.addPlanCost(key, cost)
+    return self.costCache[key]
 
   # Given a plan, return an optimized plan with both selection and
   # projection operations pushed down to their nearest defining relation
@@ -460,20 +464,37 @@ class Optimizer:
     return newPlan
 
   def get_best_join(self, candidates, required_joins):
-    best_plan_cost = None
+    best_plan_cost = sys.maxsize
     best_plan = None
-    for left, right in candidates:
 
+    for left, right in candidates:
       relevant_expr = None
 
       # Find the joinExpr corresponding to the current join candidate. If there is none, it's a
       # cartesian product.
       for join in required_joins:
         names = ExpressionInfo(join.joinExpr).getAttributes()
-        # if set(join.rhsSchema.fields).intersection(names) and set(join.lhsSchema.fields).intersection(names):
+        hashJoin = False
         if set(right.schema().fields).intersection(names) and set(left.schema().fields).intersection(names):
           relevant_expr = join.joinExpr
+
+          # for hash join
+          rhsKeySchema = self.buildKeySchema("rhsKey", right.schema().fields, right.schema().types, set(right.schema().fields).intersection(names), updateAttr=True)
+          lhsKeySchema = self.buildKeySchema("lhsKey", left.schema().fields, left.schema().types, set(left.schema().fields).intersection(names), updateAttr=False)
+          rhsFields = ["rhsKey_" + f for f in right.schema().fields]
+          attrMap = {}
+          orgFileds = right.schema().fields
+          for i in range(len(rhsFields)):
+            attrMap[orgFileds[i]] = rhsFields[i]
+          rhsNewSchema = right.schema().rename("rhsSchema2", attrMap)
+          # print("-----")
+          # print(rhsKeySchema.toString())
+          # print(lhsKeySchema.toString())
+          # print(rhsNewSchema.toString())
+          # print(right.schema().toString())
+          hashJoin = True
           break
+
         else:
           relevant_expr = 'True'
 
@@ -481,27 +502,54 @@ class Optimizer:
       #We don't use index-join because we don't necessarily have index for the join.
       # Construct a join plan for the current candidate, for each possible join algorithm.
       # TODO: Evaluate more than just nested loop joins, and determine feasibility of those methods.
-      for algorithm in ["nested-loops", "block-nested-loops"]:
-        test_plan = Plan(root = Join(
-          lhsPlan = left,
-          rhsPlan = right,
-          method = algorithm,
-          expr = relevant_expr
-        ))
+      for algo in ["nested-loops", "block-nested-loops"]:
+        if algo != "hash":
+          test_plan = Plan(root = Join(
+            lhsPlan = left,
+            rhsPlan = right,
+            method = algo,
+            expr = relevant_expr
+          ))
+
+        elif hashJoin:
+          lhsHashFn = "hash(" + lhsKeySchema.fields[0] + ") % 8"
+          rhsHashFn = "hash(" + rhsKeySchema.fields[0] + ") % 8"
+
+          joinPlan = Join(
+            lhsPlan=left,
+            rhsPlan=right,
+          method='hash',
+          rhsSchema=rhsNewSchema,
+          lhsHashFn=lhsHashFn, lhsKeySchema=lhsKeySchema,
+          rhsHashFn=rhsHashFn, rhsKeySchema=rhsKeySchema
+          )
+          print(joinPlan.conciseExplain())
+          test_plan = Plan(root=joinPlan)
+
+        else:
+          continue
 
         # Prepare and run the plan in sampling mode, and get the estimated cost.
         test_plan.prepare(self.db)
-        test_plan.sample(1.0)
-        cost = test_plan.cost(estimated = True)
+        cost = self.getPlanCost(test_plan)
 
         # Update running best.
-        if best_plan_cost is None or cost < best_plan_cost:
+        if cost < best_plan_cost:
           best_plan_cost = cost
           best_plan = test_plan
 
     # Need to return the root operator rather than the plan itself, since it's going back into the
     # table.
     return best_plan.root
+
+  def buildKeySchema(self, name, fields, types, attrs, updateAttr=False):
+    keys = []
+    for attr in attrs:
+      if updateAttr:
+        keys.append((name + "_" + attr, types[fields.index(attr)]))
+      else:
+        keys.append((attr, types[fields.index(attr)]))
+    return DBSchema(name, keys)
 
   # Optimize the given query plan, returning the resulting improved plan.
   # This should perform operation pushdown, followed by join order selection.
