@@ -66,18 +66,18 @@ class Optimizer:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
-  >>> query6 = db.query().fromTable('employee').join(\
-        db.query().fromTable('department').select({'eid':('eid','int')}),\
-       method='block-nested-loops', expr='id == eid').where('age > 0').join(\
-       db.query().fromTable('salarys'),\
-       method='block-nested-loops', expr='sid == id').where('id > 0').select({'id':('id', 'int')})\
-       .union(\
-       db.query().fromTable('employee').join(\
-        db.query().fromTable('department').select({'eid':('eid','int')}),\
-       method='block-nested-loops', expr='id == eid').where('age > 0').join(\
-       db.query().fromTable('salarys'),\
-       method='block-nested-loops', expr='sid == id').where('id > 0').select({'id':('id', 'int')})\
-       ).finalize()
+  # >>> query6 = db.query().fromTable('employee').join(\
+  #       db.query().fromTable('department').select({'eid':('eid','int')}),\
+  #      method='block-nested-loops', expr='id == eid').where('age > 0').join(\
+  #      db.query().fromTable('salarys'),\
+  #      method='block-nested-loops', expr='sid == id').where('id > 0').select({'id':('id', 'int')})\
+  #      .union(\
+  #      db.query().fromTable('employee').join(\
+  #       db.query().fromTable('department').select({'eid':('eid','int')}),\
+  #      method='block-nested-loops', expr='id == eid').where('age > 0').join(\
+  #      db.query().fromTable('salarys'),\
+  #      method='block-nested-loops', expr='sid == id').where('id > 0').select({'id':('id', 'int')})\
+  #      ).finalize()
 
   # >>> print(query6.explain())
   # >>> q6results = [query6.schema().unpack(tup) for page in db.processQuery(query6) for tup in page[1]]

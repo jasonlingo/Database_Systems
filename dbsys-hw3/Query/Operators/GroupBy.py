@@ -170,6 +170,9 @@ class GroupBy(Operator):
     return "(groupSchema=" + self.groupSchema.toString() + ", aggSchema=" + self.aggSchema.toString() + ")"
 
   def cost(self, estimated):
-
-
-    return super.cost()
+    """
+    In this assignment, it uses a hash function to partition all tuples. Thus, we need to add the cost
+    of processing all tuples.
+    """
+    partCost = self.subPlan.cardinality(estimated)
+    return super.cost() + partCost

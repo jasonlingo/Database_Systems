@@ -1,5 +1,5 @@
 import itertools
-
+import math
 from Catalog.Schema import DBSchema
 from Query.Operator import Operator
 
@@ -356,7 +356,7 @@ class Join(Operator):
 
     elif self.joinMethod == "block-nested-loops":
       # extraCost += self.blockNestedLoopIOCost(estimated)
-      extraCost += self.nestedLoopIOCost(estimated)
+      extraCost += self.blockNestedLoopIOCost(estimated)
 
     numInputs = sum(map(lambda x: x.cardinality(estimated), self.inputs()))
     return numInputs * self.tupleCost + extraCost
@@ -369,6 +369,10 @@ class Join(Operator):
     For computing the IO cost, we compare the disk and memory IO speed (listed on lecture 2, page 10).
     The time to read the 1 MB data from disk is 80 times longer than that from memory (20,000,000 / 250,000)
 
+    But here we assume the disk speed is faster than ordinary disk. For example, if we use SSD or other
+    in-memory DB, then the multiplier will be much less than 80. Here we choose a multiplier of 2 to
+    differentiate the cost for page IO and memory access.
+
     So the cost for reading one page should be (page size / tuple size) * (tuple cost * 80).
     We assume the page sizes of rhs and lhs are the same.
     """
@@ -376,8 +380,8 @@ class Join(Operator):
     pageCost = lhsPageSize / self.lhsSchema.size * self.tupleCost  #FIXME: need to multiply 80?
     extraCost = (lhsPageNum + self.lhsPlan.cardinality(estimated) * rhsPageNum)
     extraCost *= pageCost
-    print("nl cost: %f" % extraCost)
-    return int(extraCost)
+    # print("nl cost: %f" % extraCost)
+    return int(math.ceil(extraCost))
 
   def blockNestedLoopIOCost(self, estimated):
     """
@@ -389,10 +393,13 @@ class Join(Operator):
     pageCost = lhsPageSize / self.lhsSchema.size * self.tupleCost
     extraCost = lhsPageNum + self.lhsPlan.cardinality(estimated) / ( (bufPool.numPages() - 2) * rhsPageNum )
     extraCost *= pageCost
-    print("bln cost: %f" % extraCost)
-    return int(extraCost)
+    # print("bln cost: %f" % extraCost)
+    return int(math.ceil(extraCost))
 
   def getPageInfo(self):
+    """
+    Get the page size, number of pages, and number of tuples of sub-plans.
+    """
     lhsRelId = self.lhsPlan.relationId()
     rhsRelId = self.rhsPlan.relationId()
     lhsPageSize, lhsPageNum, lhsTupleNum = self.storage.relationStats(lhsRelId)
