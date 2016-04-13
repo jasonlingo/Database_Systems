@@ -18,7 +18,7 @@ if __name__=="__main__":
   where
           l_shipdate >= 19940101
           and l_shipdate < 19950101
-          and l_discount between 0.06 - 0.01 and 0.06 + 0.01
+          and l_discount betwgeen 0.06 - 0.01 and 0.06 + 0.01
           and l_quantity < 24
 
   """
