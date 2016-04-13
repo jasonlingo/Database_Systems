@@ -1,3 +1,4 @@
+
 class Operator:
   """
   An abstract base class for all operator implementations.
@@ -46,7 +47,9 @@ class Operator:
 
   @property
   def deep_max_arity(self):
-    return max([self.arity] + [op.arity for op in self.inputs()])
+    if self.operatorType() == "UnionAll":
+      return 1
+    return max([self.arity] + [op.deep_max_arity for op in self.inputs()])
 
   # Prepares the operator for execution.
   def prepare(self, database):
@@ -149,7 +152,7 @@ class Operator:
   # This propagates the sampling rate over all of our children.
   def useSampling(self, sampled, sampleFactor):
     if sampled:
-      self.initializeStatistics()
+      self.estimatedCardinality = 0
     self.sampled = sampled
     self.sampleFactor = sampleFactor
     for childOp in self.inputs():

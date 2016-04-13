@@ -1,4 +1,4 @@
-import itertools
+import itertools, math
 
 from Catalog.Schema import DBSchema
 from Query.Operator import Operator
@@ -342,6 +342,40 @@ class Join(Operator):
 
 
   # Plan and statistics information
+
+  # ===================================================
+  # customized cost for Join operator
+  # ===================================================
+
+  # def cost(self, estimated):
+  #   subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
+  #   return self.localCost(estimated) + subPlanCost
+
+  # def localCost(self, estimated):
+  #
+  #   if estimated:
+  #     l_inputPages   = 0
+  #     r_inputPages   = 0
+  #     fileSize       = 0
+  #     pageBlockNum   = 0
+  #     try:
+  #       l_pageSize, l_inputPages, _ = self.storage.relationStats(self.lhsPlan.relationId())
+  #       _, r_inputPages, _ = self.storage.relationStats(self.rhsPlan.relationId())
+  #       pageBlockNum           = math.ceil( l_inputPages / self.storage.bufferPool.numPages() )
+  #     except:
+  #       pass
+  #
+  #     l_inputPages *= self.sampleFactor
+  #     r_inputPages *= self.sampleFactor
+  #
+  #   if (self.joinMethod == "nested-loops"):
+  #     local_cost = l_inputPages + self.lhsPlan.cardinality(estimated) * r_inputPages
+  #   elif (self.joinMethod == "block-nested-loops"):
+  #     local_cost = l_inputPages + pageBlockNum * r_inputPages
+  #
+  #   elif (self.joinMethod == "hash"):
+  #     local_cost = 3 * (l_inputPages + r_inputPages)
+  #   return local_cost * 80 * l_pageSize / self.schema().size
 
   # Returns a single line description of the operator.
   def explain(self):

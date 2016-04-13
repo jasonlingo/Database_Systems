@@ -9,6 +9,7 @@ from Query.Operators.Project   import Project
 from Query.Operators.Union     import Union
 from Query.Operators.Join      import Join
 from Query.Operators.GroupBy   import GroupBy
+from Query.Operators.Union     import Union
 
 class Plan:
   """
@@ -62,6 +63,10 @@ class Plan:
   def joins(self):
     return [op for (_, op) in self.flatten() if isinstance(op, Join)]
 
+  @property
+  def unions(self):
+    return [op for (_, op) in self.flatten() if isinstance(op, Union)]
+
   # Get basic sources (TableScan + Unary Operators) -- similar to flatten()
   @property
   def sources(self):
@@ -72,6 +77,38 @@ class Plan:
       while queue:
         operator = queue.popleft()
         if operator.deep_max_arity <= 1:
+          result.append(operator)
+        else:
+          queue.extendleft(operator.inputs())
+
+      return result
+
+  @property
+  def joinBeforeUnion(self):
+    if self.root:
+      result = []
+      queue = deque([self.root])
+
+      while queue:
+        operator = queue.popleft()
+        if "Join" in operator.operatorType():
+          result.append(operator)
+          queue.extendleft(operator.inputs())
+        elif operator.operatorType() != "UnionAll":
+          queue.extendleft(operator.inputs())
+
+      return result
+
+  #for picking base source (see UnionAll as unary operators because we don't reorder UnionAll)
+  @property
+  def joinSources(self):
+    if self.root:
+      result = []
+      queue = deque([self.root])
+
+      while queue:
+        operator = queue.popleft()
+        if operator.deep_max_arity <= 1 or operator.operatorType() == "UnionAll":
           result.append(operator)
         else:
           queue.extendleft(operator.inputs())
