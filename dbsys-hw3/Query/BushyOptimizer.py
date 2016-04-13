@@ -14,11 +14,96 @@ from Query.Optimizer import Optimizer
 
 def tuple_without(t, x):
   s = list(t)
-  s.remove(x)
+  for i in list(x):
+    s.remove(i)
   return tuple(s)
 
 
 class BushyOptimizer(Optimizer):
+  """
+  >>> import Database, shutil, Storage
+  >>> db = Database.Database()
+  >>> try:
+  ...   db.createRelation('department', [('did', 'int'), ('eid', 'int')])
+  ... except ValueError:
+  ...   pass
+  >>> try:
+  ...   db.createRelation('employee', [('id', 'int'), ('age', 'int')])
+  ... except ValueError:
+  ...   pass
+  >>> try:
+  ...   db.createRelation('salarys', [('sid', 'int'), ('salary', 'int')])
+  ... except ValueError:
+  ...   pass
+  >>> try:
+  ...   db.createRelation('work', [('wid', 'int'), ('ewid', 'int')])
+  ... except ValueError:
+  ...   pass
+
+ # Populate relation
+  >>> schema = db.relationSchema('employee')
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
+  ...    _ = db.insertTuple(schema.name, tup)
+  ...
+
+  >>> schema = db.relationSchema('department')
+  >>> for tup in [schema.pack(schema.instantiate(i, 4*i)) for i in range(20)]:
+  ...    _ = db.insertTuple(schema.name, tup)
+  ...
+
+  >>> schema = db.relationSchema('salarys')
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
+  ...    _ = db.insertTuple(schema.name, tup)
+  ...
+
+  >>> schema = db.relationSchema('work')
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
+  ...    _ = db.insertTuple(schema.name, tup)
+  ...
+
+  >>> query7 = db.query().fromTable('employee').join(\
+        db.query().fromTable('department').select({'eid':('eid','int')}),\
+       method='block-nested-loops', expr='id == eid').join(\
+       db.query().fromTable('salarys'),\
+       method='block-nested-loops', expr='sid == id').where('sid > 0').select({'age':('age', 'int')}).finalize()
+
+  >>> query7.sample(1.0)
+  >>> print(query7.explain())
+  >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
+  >>> print([tup for tup in q7results])
+
+  >>> query8 = db.query().fromTable('employee').join(\
+        db.query().fromTable('department').select({'eid':('eid','int')}),\
+       method='block-nested-loops', expr='id == eid').join(\
+       db.query().fromTable('salarys'),\
+       method='block-nested-loops', expr='sid == id').where('sid > 0').select({'age':('age', 'int')}).finalize()
+
+  >>> query8 = db.optimizer.optimizeQuery(query8)
+  >>> query8.sample(1.0)
+  >>> print(query8.explain())
+  >>> q8results = [query8.schema().unpack(tup) for page in db.processQuery(query8) for tup in page[1]]
+  >>> print([tup for tup in q8results])
+
+  >>> query9 = db.query().fromTable('employee').join(\
+        db.query().fromTable('department').select({'eid':('eid','int')}),\
+       method='block-nested-loops', expr='id == eid').join(\
+       db.query().fromTable('salarys'),\
+       method='block-nested-loops', expr='sid == id').where('sid > 0').select({'age':('age', 'int')}).finalize()
+
+  >>> db.setOptimizer(BushyOptimizer)
+  >>> query9 = db.optimizer.optimizeQuery(query9)
+  >>> query9.sample(1.0)
+  >>> print(query9.explain())
+  >>> q9results = [query9.schema().unpack(tup) for page in db.processQuery(query9) for tup in page[1]]
+  >>> print([tup for tup in q9results])
+
+
+  >>> shutil.rmtree(Storage.FileManager.FileManager.defaultDataDir)
+
+  """
+
+  def __init__(self, db):
+    super().__init__(db)
 
   def pickJoinOrder(self, plan):
     """
@@ -40,9 +125,8 @@ class BushyOptimizer(Optimizer):
 
     # Keep the top operators before the first Join operator.
     # After pick the join order, connect the top operators back to the new operation tree.
-    dummy = Select(None, "")
-    dummy.subPlan = plan.root
-    end = dummy
+    end = Select(None, "")
+    end.subPlan = plan.root
     while end:
       if isinstance(end.subPlan, Join):
         break
@@ -69,11 +153,12 @@ class BushyOptimizer(Optimizer):
 
         # Build the set of candidate joins.
         candidate_joins = set()
-        for candidate_relation in subset:
-          candidate_joins.add((
-            optimal_plans[frozenset(tuple_without(subset, candidate_relation))],
-            optimal_plans[frozenset((candidate_relation,))]
-          ))
+        for j in range(1, len(subset)):
+          for subset2 in itertools.combinations(subset, j):
+            candidate_joins.add((
+              optimal_plans[frozenset(tuple_without(subset, subset2))],
+              optimal_plans[frozenset(subset2)]
+            ))
 
         # Find the best of the candidate joins.
         optimal_plans[frozenset(subset)] = self.get_best_join(candidate_joins, joins)
@@ -98,28 +183,11 @@ class BushyOptimizer(Optimizer):
       # cartesian product.
       for join in required_joins:
         attrs = ExpressionInfo(join.joinExpr).getAttributes()
-        hashJoin = False
 
         rhsInterAttrs = set(right.schema().fields).intersection(attrs)
         lhsInterAttrs =  set(left.schema().fields).intersection(attrs)
         if rhsInterAttrs and lhsInterAttrs:
           relevant_expr = join.joinExpr
-
-          # for hash join, build keySchemas and new rhs schema.
-          rhsKeySchema = self.buildKeySchema("rhsKey", right.schema().fields, right.schema().types, rhsInterAttrs, updateAttr=True)
-          lhsKeySchema = self.buildKeySchema("lhsKey", left.schema().fields,  left.schema().types,  lhsInterAttrs, updateAttr=False)
-          rhsFields = ["rhsKey_" + f for f in right.schema().fields]
-          attrMap = {}
-          orgFileds = right.schema().fields
-          for i in range(len(rhsFields)):
-            attrMap[orgFileds[i]] = rhsFields[i]
-          rhsNewSchema = right.schema().rename("rhsSchema2", attrMap)
-          # print("-----")
-          # print(rhsKeySchema.toString())
-          # print(lhsKeySchema.toString())
-          # print(rhsNewSchema.toString())
-          # print(right.schema().toString())
-          hashJoin = True
           break
 
         else:
@@ -130,31 +198,12 @@ class BushyOptimizer(Optimizer):
       # Construct a join plan for the current candidate, for each possible join algorithm.
       # TODO: Evaluate more than just nested loop joins, and determine feasibility of those methods.
       for algo in ["nested-loops", "block-nested-loops"]:
-        if algo != "hash":
-          test_plan = Plan(root = Join(
-            lhsPlan = left,
-            rhsPlan = right,
-            method = algo,
-            expr = relevant_expr
-          ))
-
-        elif hashJoin:
-          lhsHashFn = "hash(" + lhsKeySchema.fields[0] + ") % 8"
-          rhsHashFn = "hash(" + rhsKeySchema.fields[0] + ") % 8"
-
-          joinPlan = Join(
-            lhsPlan=left,
-            rhsPlan=right,
-          method='hash',
-          rhsSchema=rhsNewSchema,
-          lhsHashFn=lhsHashFn, lhsKeySchema=lhsKeySchema,
-          rhsHashFn=rhsHashFn, rhsKeySchema=rhsKeySchema
-          )
-          print(joinPlan.conciseExplain())
-          test_plan = Plan(root=joinPlan)
-
-        else:
-          continue
+        test_plan = Plan(root = Join(
+          lhsPlan = left,
+          rhsPlan = right,
+          method = algo,
+          expr = relevant_expr
+        ))
 
         # Prepare and run the plan in sampling mode, and get the estimated cost.
         test_plan.prepare(self.db)
@@ -177,3 +226,8 @@ class BushyOptimizer(Optimizer):
       else:
         keys.append((attr, types[fields.index(attr)]))
     return DBSchema(name, keys)
+
+
+if __name__ == "__main__":
+  import doctest
+  doctest.testmod()

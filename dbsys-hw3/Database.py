@@ -3,6 +3,7 @@ import json, io, os, os.path
 from Catalog.Schema        import DBSchema, DBSchemaEncoder, DBSchemaDecoder
 from Query.Plan            import PlanBuilder
 from Query.Optimizer       import Optimizer
+from Query.BushyOptimizer  import BushyOptimizer
 from Storage.StorageEngine import StorageEngine
 
 class Database:
@@ -44,6 +45,9 @@ class Database:
     self.defaultPageSize = other.defaultPageSize
     self.storage         = other.storage
     self.optimizer       = other.optimizer
+
+  def setOptimizer(self, opti):
+    self.optimizer = opti(self)
 
   def close(self):
     if self.storage:

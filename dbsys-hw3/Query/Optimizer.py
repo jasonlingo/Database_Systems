@@ -403,9 +403,10 @@ class Optimizer:
     Keep top operators before the first Join and connect it back after reordering Joins
     """
     # Extract all base relations, along with any unary operators immediately above.
+    # UnionAll will be seen as a base relation
     baseRelations = set(plan.joinSources)
 
-    # perform pickJoinOeder under UnionAll
+    # Perform pickJoinOrder under UnionAll first.
     for op in baseRelations:
       while op and not isinstance(op, TableScan):
         if isinstance(op, Union):
@@ -414,8 +415,8 @@ class Optimizer:
           break
         op = op.subPlan
 
-    # Keep the top operators before the first Join operator.
-    # After pick the join order, connect the top operators back to the new operation tree.
+    # Keep the top operators before the first Join.
+    # After picking the join order, connect the top operators back to the new operation tree.
     dummy = Select(None, "")
     dummy.subPlan = plan.root
     end = dummy
@@ -429,6 +430,8 @@ class Optimizer:
       end = end.subPlan
 
     # Extract all joins in original plan, they serve as the set of joins actually necessary.
+    # Since we already perform pickJoinOrder for the sub-plans of UnionAlls, here we only
+    # perform pickJoinOrder for those join above the UnionAlls.
     joins = set(plan.joinBeforeUnion)
 
     # Define the dynamic programming table.
@@ -474,60 +477,59 @@ class Optimizer:
       # cartesian product.
       for join in required_joins:
         names = ExpressionInfo(join.joinExpr).getAttributes()
-        hashJoin = False
+        # hashJoin = False
         if set(right.schema().fields).intersection(names) and set(left.schema().fields).intersection(names):
           relevant_expr = join.joinExpr
 
-          # for hash join
-          rhsKeySchema = self.buildKeySchema("rhsKey", right.schema().fields, right.schema().types, set(right.schema().fields).intersection(names), updateAttr=True)
-          lhsKeySchema = self.buildKeySchema("lhsKey", left.schema().fields, left.schema().types, set(left.schema().fields).intersection(names), updateAttr=False)
-          rhsFields = ["rhsKey_" + f for f in right.schema().fields]
-          attrMap = {}
-          orgFileds = right.schema().fields
-          for i in range(len(rhsFields)):
-            attrMap[orgFileds[i]] = rhsFields[i]
-          rhsNewSchema = right.schema().rename("rhsSchema2", attrMap)
-          # print("-----")
-          # print(rhsKeySchema.toString())
-          # print(lhsKeySchema.toString())
-          # print(rhsNewSchema.toString())
-          # print(right.schema().toString())
-          hashJoin = True
+          # # for hash join
+          # rhsKeySchema = self.buildKeySchema("rhsKey", right.schema().fields, right.schema().types, set(right.schema().fields).intersection(names), updateAttr=True)
+          # lhsKeySchema = self.buildKeySchema("lhsKey", left.schema().fields, left.schema().types, set(left.schema().fields).intersection(names), updateAttr=False)
+          # rhsFields = ["rhsKey_" + f for f in right.schema().fields]
+          # attrMap = {}
+          # orgFileds = right.schema().fields
+          # for i in range(len(rhsFields)):
+          #   attrMap[orgFileds[i]] = rhsFields[i]
+          # rhsNewSchema = right.schema().rename("rhsSchema2", attrMap)
+          # # print("-----")
+          # # print(rhsKeySchema.toString())
+          # # print(lhsKeySchema.toString())
+          # # print(rhsNewSchema.toString())
+          # # print(right.schema().toString())
+          # hashJoin = True
           break
 
         else:
           relevant_expr = 'True'
 
-      #According to the performance result in assignment 2, we use hash join here.
-      #We don't use index-join because we don't necessarily have index for the join.
+      # We don't use index-join because we don't necessarily have index for the join.
       # Construct a join plan for the current candidate, for each possible join algorithm.
       # TODO: Evaluate more than just nested loop joins, and determine feasibility of those methods.
       for algo in ["nested-loops", "block-nested-loops"]:
-        if algo != "hash":
-          test_plan = Plan(root = Join(
-            lhsPlan = left,
-            rhsPlan = right,
-            method = algo,
-            expr = relevant_expr
-          ))
+        # if algo != "hash":
+        test_plan = Plan(root = Join(
+          lhsPlan = left,
+          rhsPlan = right,
+          method = algo,
+          expr = relevant_expr
+        ))
 
-        elif hashJoin:
-          lhsHashFn = "hash(" + lhsKeySchema.fields[0] + ") % 8"
-          rhsHashFn = "hash(" + rhsKeySchema.fields[0] + ") % 8"
-
-          joinPlan = Join(
-            lhsPlan=left,
-            rhsPlan=right,
-          method='hash',
-          rhsSchema=rhsNewSchema,
-          lhsHashFn=lhsHashFn, lhsKeySchema=lhsKeySchema,
-          rhsHashFn=rhsHashFn, rhsKeySchema=rhsKeySchema
-          )
-          print(joinPlan.conciseExplain())
-          test_plan = Plan(root=joinPlan)
-
-        else:
-          continue
+        # elif hashJoin:
+        #   lhsHashFn = "hash(" + lhsKeySchema.fields[0] + ") % 8"
+        #   rhsHashFn = "hash(" + rhsKeySchema.fields[0] + ") % 8"
+        #
+        #   joinPlan = Join(
+        #     lhsPlan=left,
+        #     rhsPlan=right,
+        #   method='hash',
+        #   rhsSchema=rhsNewSchema,
+        #   lhsHashFn=lhsHashFn, lhsKeySchema=lhsKeySchema,
+        #   rhsHashFn=rhsHashFn, rhsKeySchema=rhsKeySchema
+        #   )
+        #   print(joinPlan.conciseExplain())
+        #   test_plan = Plan(root=joinPlan)
+        #
+        # else:
+        #   continue
 
         # Prepare and run the plan in sampling mode, and get the estimated cost.
         test_plan.prepare(self.db)
@@ -556,7 +558,6 @@ class Optimizer:
   def optimizeQuery(self, plan):
     pushedDown_plan = self.pushdownOperators(plan)
     joinPicked_plan = self.pickJoinOrder(pushedDown_plan)
-
     return joinPicked_plan
 
 if __name__ == "__main__":

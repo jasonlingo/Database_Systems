@@ -26,6 +26,7 @@ class Join(Operator):
     self.initializeSchema()
     self.initializeMethod(**kwargs)
 
+
   # Checks the join parameters.
   def validateJoin(self):
     # Valid join methods: "nested-loops", "block-nested-loops", "indexed", "hash"
@@ -344,22 +345,22 @@ class Join(Operator):
   # customized cost for Join operator
   # ===================================================
 
-  def cost(self, estimated):
-    subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
-    return self.localCost(estimated) + subPlanCost
-
-  def localCost(self, estimated):
-    extraCost = 0
-
-    if self.joinMethod == "nested-loops":
-      extraCost += self.nestedLoopIOCost(estimated)
-
-    elif self.joinMethod == "block-nested-loops":
-      # extraCost += self.blockNestedLoopIOCost(estimated)
-      extraCost += self.blockNestedLoopIOCost(estimated)
-
-    numInputs = sum(map(lambda x: x.cardinality(estimated), self.inputs()))
-    return numInputs * self.tupleCost + extraCost
+  # def cost(self, estimated):
+  #   subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
+  #   return self.localCost(estimated) + subPlanCost
+  #
+  # def localCost(self, estimated):
+  #   extraCost = 0
+  #
+  #   # if self.joinMethod == "nested-loops":
+  #   #   extraCost += self.nestedLoopIOCost(estimated)
+  #   #
+  #   # elif self.joinMethod == "block-nested-loops":
+  #   #   # extraCost += self.blockNestedLoopIOCost(estimated)
+  #   #   extraCost += self.blockNestedLoopIOCost(estimated)
+  #
+  #   numInputs = sum(map(lambda x: x.cardinality(estimated), self.inputs()))
+  #   return numInputs * self.tupleCost + extraCost
 
   def nestedLoopIOCost(self, estimated):
     """

@@ -174,5 +174,6 @@ class GroupBy(Operator):
     In this assignment, it uses a hash function to partition all tuples. Thus, we need to add the cost
     of processing all tuples.
     """
-    partCost = self.subPlan.cardinality(estimated)
+    # partCost = self.subPlan.cardinality(estimated) # FIXME
+    partCost = 0
     return super.cost() + partCost
