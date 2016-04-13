@@ -47,22 +47,22 @@ class Optimizer:
 
  # Populate relation
   >>> schema = db.relationSchema('employee')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
   >>> schema = db.relationSchema('department')
-  >>> for tup in [schema.pack(schema.instantiate(i, 4*i)) for i in range(20)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 4*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
   >>> schema = db.relationSchema('salarys')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
   >>> schema = db.relationSchema('work')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 

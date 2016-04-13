@@ -345,22 +345,22 @@ class Join(Operator):
   # customized cost for Join operator
   # ===================================================
 
-  # def cost(self, estimated):
-  #   subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
-  #   return self.localCost(estimated) + subPlanCost
-  #
-  # def localCost(self, estimated):
-  #   extraCost = 0
-  #
-  #   # if self.joinMethod == "nested-loops":
-  #   #   extraCost += self.nestedLoopIOCost(estimated)
-  #   #
-  #   # elif self.joinMethod == "block-nested-loops":
-  #   #   # extraCost += self.blockNestedLoopIOCost(estimated)
-  #   #   extraCost += self.blockNestedLoopIOCost(estimated)
-  #
-  #   numInputs = sum(map(lambda x: x.cardinality(estimated), self.inputs()))
-  #   return numInputs * self.tupleCost + extraCost
+  def cost(self, estimated):
+    subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
+    return self.localCost(estimated) + subPlanCost
+
+  def localCost(self, estimated):
+    extraCost = 0
+
+    if self.joinMethod == "nested-loops":
+      extraCost += self.nestedLoopIOCost(estimated)
+
+    elif self.joinMethod == "block-nested-loops":
+      # extraCost += self.blockNestedLoopIOCost(estimated)
+      extraCost += self.blockNestedLoopIOCost(estimated)
+
+    numInputs = sum(map(lambda x: x.cardinality(estimated), self.inputs()))
+    return numInputs * self.tupleCost + extraCost
 
   def nestedLoopIOCost(self, estimated):
     """
@@ -392,6 +392,10 @@ class Join(Operator):
     lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum = self.getPageInfo()
     bufPool    = self.storage.bufferPool
     pageCost = lhsPageSize / self.lhsSchema.size * self.tupleCost
+
+    # The rhs subPlan might have no tuple. If so, return 0 because we don't have tuples at rhs for joining.
+    if rhsPageNum == 0 or (bufPool.numPages() - 2 == 0):
+      return 0
     extraCost = lhsPageNum + self.lhsPlan.cardinality(estimated) / ( (bufPool.numPages() - 2) * rhsPageNum )
     extraCost *= pageCost
     # print("bln cost: %f" % extraCost)

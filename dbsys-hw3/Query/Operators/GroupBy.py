@@ -172,8 +172,10 @@ class GroupBy(Operator):
   def cost(self, estimated):
     """
     In this assignment, it uses a hash function to partition all tuples. Thus, we need to add the cost
-    of processing all tuples.
+    of processing all tuples. In addition, to perform aggregation, we also need to compare each tuple.
+    Thus, we go through all tuples again. So the cost of group by will be 2 * estimated number of tuples.
+    We will add the group by cost to the original cost function.
     """
-    # partCost = self.subPlan.cardinality(estimated) # FIXME
-    partCost = 0
+    partCost = self.subPlan.cardinality(estimated) * 2 # FIXME
+    # partCost = 0
     return super.cost() + partCost
