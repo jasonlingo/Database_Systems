@@ -95,7 +95,7 @@ class Optimizer:
        db.query().fromTable('salarys'),\
        method='block-nested-loops', expr='sid == id').where('sid > 0').select({'age':('age', 'int')}).finalize()
 
-  >>> query7.sample(1.0)
+  # >>> query7.sample(1.0)
   >>> print(query7.explain())
   >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
   >>> print([tup for tup in q7results])

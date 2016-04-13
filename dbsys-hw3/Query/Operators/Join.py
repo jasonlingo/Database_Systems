@@ -129,12 +129,12 @@ class Join(Operator):
   # Nested loops implementation
   #
   def nestedLoops(self):
-    for (lPageId, lhsPage) in iter(self.lhsPlan):
+    for (lPageId, lhsPage) in self.lhsPlan:
       for lTuple in lhsPage:
         # Load the lhs once per inner loop.
         joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
 
-        for (rPageId, rhsPage) in iter(self.rhsPlan):
+        for (rPageId, rhsPage) in self.rhsPlan:
           for rTuple in rhsPage:
             # Load the RHS tuple fields.
             joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
@@ -188,7 +188,7 @@ class Join(Operator):
           # Load the lhs once per inner loop.
           joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
 
-          for (rPageId, rhsPage) in iter(self.rhsPlan):
+          for (rPageId, rhsPage) in self.rhsPlan:
             for rTuple in rhsPage:
               # Load the RHS tuple fields.
               joinExprEnv.update(self.loadSchema(self.rhsSchema, rTuple))
@@ -223,7 +223,7 @@ class Join(Operator):
       raise ValueError("Missing index in storage manager: %s" % self.indexId)
     if self.indexId:
       bufPool = self.storage.bufferPool
-      for (lPageId, lhsPage) in iter(self.lhsPlan):
+      for (lPageId, lhsPage) in self.lhsPlan:
         for lTuple in lhsPage:
           # Load the lhs once per inner loop.
           joinExprEnv = self.loadSchema(self.lhsSchema, lTuple)
@@ -263,13 +263,13 @@ class Join(Operator):
   def hashJoin(self):
     # Partition the LHS and RHS inputs, creating a temporary file for each partition.
     # We assume one-level of partitioning is sufficient and skip recurring.
-    for (lPageId, lPage) in iter(self.lhsPlan):
+    for (lPageId, lPage) in self.lhsPlan:
       for lTuple in lPage:
         lPartEnv = self.loadSchema(self.lhsSchema, lTuple)
         lPartKey = eval(self.lhsHashFn, globals(), lPartEnv)
         self.emitPartitionTuple(lPartKey, lTuple, left=True)
 
-    for (rPageId, rPage) in iter(self.rhsPlan):
+    for (rPageId, rPage) in self.rhsPlan:
       for rTuple in rPage:
         rPartEnv = self.loadSchema(self.rhsSchema, rTuple)
         rPartKey = eval(self.rhsHashFn, globals(), rPartEnv)
@@ -344,22 +344,22 @@ class Join(Operator):
   # customized cost for Join operator
   # ===================================================
 
-  # def cost(self, estimated):
-  #   subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
-  #   return self.localCost(estimated) + subPlanCost
-  #
-  # def localCost(self, estimated):
-  #   extraCost = 0
-  #
-  #   # if self.joinMethod == "nested-loops":
-  #   #   extraCost += self.nestedLoopIOCost(estimated)
-  #   #
-  #   # elif self.joinMethod == "block-nested-loops":
-  #   #   # extraCost += self.blockNestedLoopIOCost(estimated)
-  #   #   extraCost += self.blockNestedLoopIOCost(estimated)
-  #
-  #   numInputs = sum(map(lambda x: x.cardinality(estimated), self.inputs()))
-  #   return numInputs * self.tupleCost + extraCost
+  def cost(self, estimated):
+    subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
+    return self.localCost(estimated) + subPlanCost
+
+  def localCost(self, estimated):
+    extraCost = 0
+
+    if self.joinMethod == "nested-loops":
+      extraCost += self.nestedLoopIOCost(estimated)
+
+    elif self.joinMethod == "block-nested-loops":
+      # extraCost += self.blockNestedLoopIOCost(estimated)
+      extraCost += self.blockNestedLoopIOCost(estimated)
+
+    numInputs = sum(map(lambda x: x.cardinality(estimated), self.inputs()))
+    return numInputs * self.tupleCost + extraCost
 
   def nestedLoopIOCost(self, estimated):
     """
@@ -391,6 +391,10 @@ class Join(Operator):
     lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum = self.getPageInfo()
     bufPool    = self.storage.bufferPool
     pageCost = lhsPageSize / self.lhsSchema.size * self.tupleCost
+
+    # The rhs subPlan might have no tuple. If so, return 0 because we don't have tuples at rhs for joining.
+    if rhsPageNum == 0 or (bufPool.numPages() - 2 == 0):
+      return 0
     extraCost = lhsPageNum + self.lhsPlan.cardinality(estimated) / ( (bufPool.numPages() - 2) * rhsPageNum )
     extraCost *= pageCost
     # print("bln cost: %f" % extraCost)
