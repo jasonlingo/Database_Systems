@@ -70,7 +70,7 @@ class BushyOptimizer(Optimizer):
        method='block-nested-loops', expr='EIN == d_EIN')\
        .finalize()
 
-  >>> query7.sample(1.0)
+  # >>> query7.sample(1.0)
   >>> print(query7.explain())
   >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
   # >>> print([tup for tup in q7results])
@@ -78,7 +78,7 @@ class BushyOptimizer(Optimizer):
 
   >>> db.setOptimizer(BushyOptimizer)
   >>> query7 = db.optimizer.optimizeQuery(query7)
-  >>> query7.sample(1.0)
+  # >>> query7.sample(1.0)
   >>> print(query7.explain())
 
   # >>> query8 = db.query().fromTable('employee').join(\
