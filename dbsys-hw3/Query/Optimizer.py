@@ -9,10 +9,6 @@ from Query.Operators.Union import Union
 from Query.Operators.TableScan import TableScan
 from Utils.ExpressionInfo import ExpressionInfo
 from Catalog.Schema import DBSchema
-<<<<<<< HEAD
-
-=======
->>>>>>> 26f1519acb21752e14ebc70682f58c53e5b2690e
 
 # Helper for removing items from a tuple, while preserving order.
 def tuple_without(t, x):
@@ -419,22 +415,11 @@ class Optimizer:
           break
         op = op.subPlan
 
-<<<<<<< HEAD
-    # Keep the top operators before the first Join operator.
-    # After pick the join order, connect the top operators back to the new operation tree.
-
-    # dummy = Select(None, "")
-    # dummy.subPlan = plan.root
-    # end = dummy
-
-    end = plan.root
-=======
     # Keep the top operators before the first Join.
     # After picking the join order, connect the top operators back to the new operation tree.
     dummy = Select(None, "")
     dummy.subPlan = plan.root
     end = dummy
->>>>>>> 26f1519acb21752e14ebc70682f58c53e5b2690e
     while end:
       if isinstance(end.subPlan, Join):
         break
@@ -518,46 +503,6 @@ class Optimizer:
 
       # We don't use index-join because we don't necessarily have index for the join.
       # Construct a join plan for the current candidate, for each possible join algorithm.
-<<<<<<< HEAD
-      for algorithm in ["nested-loops", "block-nested-loops"]:
-        if algorithm == "hash":
-          # Hash join cannot handle cartesian product?
-          if relevant_expr == 'True':
-            continue
-
-          names = ExpressionInfo(relevant_expr).getAttributes()
-          key1 = set(left.schema().fields).intersection(names).pop()
-          key2 = set(right.schema().fields).intersection(names).pop()
-
-          for (field, type) in left.schema().schema():
-            if field == key1:
-              keySchema = DBSchema('key1',[(field, type)])
-              break
-
-          for (field, type) in right.schema().schema():
-            if field == key2:
-              keySchema2 = DBSchema('key2',[(field, type)])
-              break
-
-          if (keySchema is None or keySchema2 is None):
-            print ("Key Schema Error\n")
-            exit(0)
-
-          test_plan = Plan(root = Join(
-            lhsPlan = left,
-            rhsPlan = right,
-            method = 'hash',
-            lhsHashFn= 'hash(' + key1 + ') % 4', lhsKeySchema=keySchema,
-            rhsHashFn= 'hash(' + key2 + ') % 4', rhsKeySchema=keySchema2
-          ))
-        else:
-          test_plan = Plan(root = Join(
-            lhsPlan = left,
-            rhsPlan = right,
-            method = algorithm,
-            expr = relevant_expr
-          ))
-=======
       # TODO: Evaluate more than just nested loop joins, and determine feasibility of those methods.
       for algo in ["nested-loops", "block-nested-loops"]:
         # if algo != "hash":
@@ -567,7 +512,6 @@ class Optimizer:
           method = algo,
           expr = relevant_expr
         ))
->>>>>>> 26f1519acb21752e14ebc70682f58c53e5b2690e
 
         # elif hashJoin:
         #   lhsHashFn = "hash(" + lhsKeySchema.fields[0] + ") % 8"
