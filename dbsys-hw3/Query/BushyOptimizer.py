@@ -191,6 +191,7 @@ class BushyOptimizer(Optimizer):
     # Calculate cost using dynamic programming
     for i in range(2, len(baseRelations) + 1):
       for subset in itertools.combinations(baseRelations, i):
+        print(".", end="",  file=sys.stdout, flush=True)
 
         # Build the set of candidate joins.
         candidate_joins = set()
@@ -258,16 +259,6 @@ class BushyOptimizer(Optimizer):
     # Need to return the root operator rather than the plan itself, since it's going back into the
     # table.
     return best_plan.root
-
-  def buildKeySchema(self, name, fields, types, attrs, updateAttr=False):
-    keys = []
-    for attr in attrs:
-      if updateAttr:
-        keys.append((name + "_" + attr, types[fields.index(attr)]))
-      else:
-        keys.append((attr, types[fields.index(attr)]))
-    return DBSchema(name, keys)
-
 
 if __name__ == "__main__":
   import doctest
