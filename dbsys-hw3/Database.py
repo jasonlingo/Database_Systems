@@ -5,6 +5,7 @@ from Query.Plan            import PlanBuilder
 from Query.Optimizer       import Optimizer
 from Query.BushyOptimizer  import BushyOptimizer
 from Storage.StorageEngine import StorageEngine
+from Query.GreedyOptimizer import GreedyOptimizer
 
 class Database:
   """

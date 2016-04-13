@@ -26,7 +26,6 @@ class Join(Operator):
     self.initializeSchema()
     self.initializeMethod(**kwargs)
 
-
   # Checks the join parameters.
   def validateJoin(self):
     # Valid join methods: "nested-loops", "block-nested-loops", "indexed", "hash"
@@ -453,6 +452,23 @@ class Join(Operator):
         ))) + ")"
 
     return exprs
+
+  # def cost(self, estimated):
+  #   subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
+  #   return self.localCost(estimated) + subPlanCost
+
+  # def localCost(self, estimated):
+  #   if self.joinMethod == "block-nested-loops":
+  #     pass
+  #   elif self.joinMethod == "nested-loops":
+  #     pass
+  #
+  #   numInputs = sum(map(lambda x: x.cardinality(estimated), self.inputs()))
+  #   return numInputs * self.tupleCost
+
+  def localCost(self, estimated):
+    numInputs = sum(map(lambda x: x.cardinality(estimated), self.inputs()))
+    return numInputs * self.tupleCost
 
 # An iterator class for looping over pairs of pages from partition files.
 class PartitionIterator:

@@ -47,22 +47,22 @@ class Optimizer:
 
  # Populate relation
   >>> schema = db.relationSchema('employee')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
   >>> schema = db.relationSchema('department')
-  >>> for tup in [schema.pack(schema.instantiate(i, 4*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 4*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
   >>> schema = db.relationSchema('salarys')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
   >>> schema = db.relationSchema('work')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
@@ -147,7 +147,7 @@ class Optimizer:
   def getPlanCost(self, plan):
     key = plan.getPlanKey()
     if key not in self.costCache:
-        plan.sample(1.0)
+        plan.sample(5.0)
         cost = plan.cost(estimated=True)
         self.addPlanCost(key, cost)
     return self.costCache[key]
@@ -440,7 +440,7 @@ class Optimizer:
     # Establish optimal access paths.
     for relation in baseRelations:
       optimal_plans[frozenset((relation,))] = relation
-      print ('relation type', type(relation), frozenset((relation,)))
+      # print ('relation type', type(relation), frozenset((relation,)))
 
     # Calculate cost using dynamic programming
     for i in range(2, len(baseRelations) + 1):
