@@ -2,6 +2,7 @@ import itertools
 import sys
 
 from Query.Optimizer import  Optimizer
+from Query.BushyOptimizer import BushyOptimizer
 from Query.Plan import Plan
 from Query.Operators.Join import Join
 from Query.Operators.Project import Project
@@ -42,7 +43,6 @@ class GreedyOptimizer(Optimizer):
   ... except ValueError:
   ...   pass
 
- # Populate relation
   >>> schema = db.relationSchema('employee')
   >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
