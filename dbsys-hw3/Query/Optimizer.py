@@ -47,22 +47,22 @@ class Optimizer:
 
  # Populate relation
   >>> schema = db.relationSchema('employee')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
   >>> schema = db.relationSchema('department')
-  >>> for tup in [schema.pack(schema.instantiate(i, 4*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 4*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
   >>> schema = db.relationSchema('salarys')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
   >>> schema = db.relationSchema('work')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
@@ -95,7 +95,7 @@ class Optimizer:
        db.query().fromTable('salarys'),\
        method='block-nested-loops', expr='sid == id').where('sid > 0').select({'age':('age', 'int')}).finalize()
 
-  >>> query7.sample(1.0)
+  # >>> query7.sample(1.0)
   >>> print(query7.explain())
   >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
   >>> print([tup for tup in q7results])
