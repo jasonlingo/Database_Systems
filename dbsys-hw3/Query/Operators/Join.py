@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import itertools, math
 
+=======
+import itertools
+import math
+>>>>>>> 26f1519acb21752e14ebc70682f58c53e5b2690e
 from Catalog.Schema import DBSchema
 from Query.Operator import Operator
 
@@ -25,6 +30,7 @@ class Join(Operator):
     self.validateJoin()
     self.initializeSchema()
     self.initializeMethod(**kwargs)
+
 
   # Checks the join parameters.
   def validateJoin(self):
@@ -347,6 +353,7 @@ class Join(Operator):
   # def cost(self, estimated):
   #   subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
   #   return self.localCost(estimated) + subPlanCost
+<<<<<<< HEAD
 
   # def localCost(self, estimated):
   #
@@ -373,9 +380,90 @@ class Join(Operator):
   #   elif (self.joinMethod == "hash"):
   #     local_cost = 3 * (l_inputPages + r_inputPages)
   #   return local_cost * 80 * l_pageSize / self.schema().size
+=======
+  #
+  # def localCost(self, estimated):
+  #   extraCost = 0
+  #
+  #   # if self.joinMethod == "nested-loops":
+  #   #   extraCost += self.nestedLoopIOCost(estimated)
+  #   #
+  #   # elif self.joinMethod == "block-nested-loops":
+  #   #   # extraCost += self.blockNestedLoopIOCost(estimated)
+  #   #   extraCost += self.blockNestedLoopIOCost(estimated)
+  #
+  #   numInputs = sum(map(lambda x: x.cardinality(estimated), self.inputs()))
+  #   return numInputs * self.tupleCost + extraCost
+
+  def nestedLoopIOCost(self, estimated):
+    """
+    The page IO cost for nested-loops is:
+          (page number of lhs) + (tuple number of lhs) * (page number of rhs)
+
+    For computing the IO cost, we compare the disk and memory IO speed (listed on lecture 2, page 10).
+    The time to read the 1 MB data from disk is 80 times longer than that from memory (20,000,000 / 250,000)
+
+    But here we assume the disk speed is faster than ordinary disk. For example, if we use SSD or other
+    in-memory DB, then the multiplier will be much less than 80. Here we choose a multiplier of 2 to
+    differentiate the cost for page IO and memory access.
+
+    So the cost for reading one page should be (page size / tuple size) * (tuple cost * 80).
+    We assume the page sizes of rhs and lhs are the same.
+    """
+    lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum = self.getPageInfo()
+    pageCost = lhsPageSize / self.lhsSchema.size * self.tupleCost  #FIXME: need to multiply 80?
+    extraCost = (lhsPageNum + self.lhsPlan.cardinality(estimated) * rhsPageNum)
+    extraCost *= pageCost
+    # print("nl cost: %f" % extraCost)
+    return int(math.ceil(extraCost))
+
+  def blockNestedLoopIOCost(self, estimated):
+    """
+    The page IO cost for block-nested-loops is:
+            (page number of lhs) + (page number of lhs) / ( (Block number - 2) * (page number of rhs) )
+    """
+    lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum = self.getPageInfo()
+    bufPool    = self.storage.bufferPool
+    pageCost = lhsPageSize / self.lhsSchema.size * self.tupleCost
+    extraCost = lhsPageNum + self.lhsPlan.cardinality(estimated) / ( (bufPool.numPages() - 2) * rhsPageNum )
+    extraCost *= pageCost
+    # print("bln cost: %f" % extraCost)
+    return int(math.ceil(extraCost))
+
+  def getPageInfo(self):
+    """
+    Get the page size, number of pages, and number of tuples of sub-plans.
+    """
+    lhsRelId = self.lhsPlan.relationId()
+    rhsRelId = self.rhsPlan.relationId()
+    lhsPageSize, lhsPageNum, lhsTupleNum = self.storage.relationStats(lhsRelId)
+    rhsPageSize, rhsPageNum, rhsTupleNum = self.storage.relationStats(rhsRelId)
+    return lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum
+>>>>>>> 26f1519acb21752e14ebc70682f58c53e5b2690e
 
   # Returns a single line description of the operator.
   def explain(self):
+    # if self.joinMethod == "nested-loops" or self.joinMethod == "block-nested-loops":
+    #   exprs = "(expr='" + str(self.joinExpr) + "')"
+    #
+    # elif self.joinMethod == "indexed":
+    #   exprs =  "(" + ','.join(filter(lambda x: x is not None, (
+    #       [ "expr='" + str(self.joinExpr) + "'" if self.joinExpr else None ]
+    #     + [ "indexKeySchema=" + self.lhsKeySchema.toString() ]
+    #     ))) + ")"
+    #
+    # elif self.joinMethod == "hash":
+    #   exprs = "(" + ','.join(filter(lambda x: x is not None, (
+    #       [ "expr='" + str(self.joinExpr) + "'" if self.joinExpr else None ]
+    #     + [ "lhsKeySchema=" + self.lhsKeySchema.toString() ,
+    #         "rhsKeySchema=" + self.rhsKeySchema.toString() ,
+    #         "lhsHashFn='" + self.lhsHashFn + "'" ,
+    #         "rhsHashFn='" + self.rhsHashFn + "'" ]
+    #     ))) + ")"
+
+    return super().explain() + self.conciseExplain()
+
+  def conciseExplain(self):
     if self.joinMethod == "nested-loops" or self.joinMethod == "block-nested-loops":
       exprs = "(expr='" + str(self.joinExpr) + "')"
 
@@ -394,7 +482,7 @@ class Join(Operator):
             "rhsHashFn='" + self.rhsHashFn + "'" ]
         ))) + ")"
 
-    return super().explain() + exprs
+    return exprs
 
 # An iterator class for looping over pairs of pages from partition files.
 class PartitionIterator:

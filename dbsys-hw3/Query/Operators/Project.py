@@ -107,3 +107,6 @@ class Project(Operator):
   # Returns a single line description of the operator.
   def explain(self):
     return super().explain() + "(projections=" + str(self.projectExprs) + ")"
+
+  def conciseExplain(self):
+    return "(projections=" + str(self.projectExprs) + ")"

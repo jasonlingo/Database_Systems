@@ -105,6 +105,9 @@ class TableScan(Operator):
   def explain(self):
     return super().explain() + "(" + self.relId + ")"
 
+  def conciseExplain(self):
+    return "(" + self.relId + ")"
+
   # Returns the table's cardinality by using the storage engine.
   def cardinality(self, estimated):
     _, _, r = self.storage.relationStats(self.relId)

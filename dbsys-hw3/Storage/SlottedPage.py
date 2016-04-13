@@ -468,7 +468,6 @@ class SlottedPage(Page):
   # Check that the page's slots have tracked the deletion.
   >>> p.header.usedSpace() == (sizeBeforeRemove - p.header.tupleSize)
   True
-
   """
 
   headerClass = SlottedPageHeader

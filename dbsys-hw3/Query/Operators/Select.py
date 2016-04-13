@@ -94,3 +94,6 @@ class Select(Operator):
   # Returns a single line description of the operator.
   def explain(self):
     return super().explain() + "(predicate='" + str(self.selectExpr) + "')"
+
+  def conciseExplain(self):
+    return "(predicate='" + str(self.selectExpr) + "')"
