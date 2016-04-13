@@ -50,27 +50,27 @@ class BushyOptimizer(Optimizer):
 
 
   >>> schema = db.relationSchema('A')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(20)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
   >>> schema = db.relationSchema('B')
-  >>> for tup in [schema.pack(schema.instantiate(i, 4*i, 3*i)) for i in range(20)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 4*i, 3*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
   >>> schema = db.relationSchema('C')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(20)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
   >>> schema = db.relationSchema('D')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(20)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
   >>> schema = db.relationSchema('E')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(20)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
   >>> schema = db.relationSchema('E')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(20)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
@@ -131,7 +131,7 @@ class BushyOptimizer(Optimizer):
        method='block-nested-loops', expr='e1 == f1').where('a1 > 0').finalize()
 
 
-  >>> query6.sample(1.0)
+  >>> query6.sample(5.0)
   >>> print(query6.explain())
 
   >>> query6 = db.optimizer.optimizeQuery(query6)
