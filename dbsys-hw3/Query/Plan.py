@@ -157,9 +157,18 @@ class Plan:
       planDesc = []
       indent = ' ' * 2
       for (depth, operator) in self.flatten():
+        expl = operator.explain()
         planDesc.append(indent * depth + operator.explain())
 
       return '\n'.join(planDesc)
+
+  def getPlanKey(self):
+    if self.root:
+      planDesc = []
+      for (_, operator) in self.flatten():
+        planDesc.append(operator.operatorType() + operator.conciseExplain())
+
+      return ' | '.join(planDesc)
 
   # Returns the cost of the plan, either as an estimate or as an actual cost
   # based on the boolean 'estimated' parameter.
@@ -181,6 +190,7 @@ class Plan:
   def sample(self, scaleFactor):
     self.root.useSampling(True, scaleFactor)
     # Process query, update each operator's cost, cardinality, and selectivity estimates.
+    self.sampleCardinality = 0
     for page in self:
       for tup in page[1]:
         self.sampleCardinality += 1
