@@ -95,7 +95,7 @@ class Optimizer:
        db.query().fromTable('salarys'),\
        method='block-nested-loops', expr='sid == id').where('sid > 0').select({'age':('age', 'int')}).finalize()
 
-  # >>> query7.sample(1.0)
+  >>> query7.sample(1.0)
   >>> print(query7.explain())
   >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
   >>> print([tup for tup in q7results])
@@ -147,7 +147,7 @@ class Optimizer:
   def getPlanCost(self, plan):
     key = plan.getPlanKey()
     if key not in self.costCache:
-        plan.sample(5.0)
+        plan.sample(1.0)
         cost = plan.cost(estimated=True)
         self.addPlanCost(key, cost)
     return self.costCache[key]
@@ -440,7 +440,7 @@ class Optimizer:
     # Establish optimal access paths.
     for relation in baseRelations:
       optimal_plans[frozenset((relation,))] = relation
-      # print ('relation type', type(relation), frozenset((relation,)))
+      print ('relation type', type(relation), frozenset((relation,)))
 
     # Calculate cost using dynamic programming
     for i in range(2, len(baseRelations) + 1):

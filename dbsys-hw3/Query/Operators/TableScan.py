@@ -47,9 +47,9 @@ class TableScan(Operator):
   # While this implementation is more verbose than necessary, it conveys
   # the page-oriented processing style of all operators.
   def __next__(self):
-    if self.sampled:
-      return self.sampledOutput()
-    else:
+    # if self.sampled:
+    #   return self.sampledOutput()
+    # else:
       return self.nextOutput()
 
   # Returns the next output page for the scan.
