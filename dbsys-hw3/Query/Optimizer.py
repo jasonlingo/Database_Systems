@@ -8,6 +8,7 @@ from Query.Operators.Select import Select
 from Query.Operators.Union import Union
 from Query.Operators.TableScan import TableScan
 from Utils.ExpressionInfo import ExpressionInfo
+from Catalog.Schema import DBSchema
 
 
 # Helper for removing items from a tuple, while preserving order.
@@ -97,7 +98,7 @@ class Optimizer:
 
   >>> query7.sample(1.0)
   >>> print(query7.explain())
-  >>> q7results = [query6.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
+  >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
   >>> print([tup for tup in q7results])
 
   >>> query8 = db.query().fromTable('employee').join(\
@@ -412,9 +413,12 @@ class Optimizer:
 
     # Keep the top operators before the first Join operator.
     # After pick the join order, connect the top operators back to the new operation tree.
-    dummy = Select(None, "")
-    dummy.subPlan = plan.root
-    end = dummy
+
+    # dummy = Select(None, "")
+    # dummy.subPlan = plan.root
+    # end = dummy
+
+    end = plan.root
     while end:
       if isinstance(end.subPlan, Join):
         break
@@ -433,7 +437,7 @@ class Optimizer:
     # Establish optimal access paths.
     for relation in baseRelations:
       optimal_plans[frozenset((relation,))] = relation
-      print ('relation type', type(relation), frozenset((relation,)))
+      # print ('relation type', type(relation), frozenset((relation,)))
 
     # Calculate cost using dynamic programming
     for i in range(2, len(baseRelations) + 1):
@@ -480,14 +484,44 @@ class Optimizer:
       #According to the performance result in assignment 2, we use hash join here.
       #We don't use index-join because we don't necessarily have index for the join.
       # Construct a join plan for the current candidate, for each possible join algorithm.
-      # TODO: Evaluate more than just nested loop joins, and determine feasibility of those methods.
       for algorithm in ["nested-loops", "block-nested-loops"]:
-        test_plan = Plan(root = Join(
-          lhsPlan = left,
-          rhsPlan = right,
-          method = algorithm,
-          expr = relevant_expr
-        ))
+        if algorithm == "hash":
+          # Hash join cannot handle cartesian product?
+          if relevant_expr == 'True':
+            continue
+
+          names = ExpressionInfo(relevant_expr).getAttributes()
+          key1 = set(left.schema().fields).intersection(names).pop()
+          key2 = set(right.schema().fields).intersection(names).pop()
+
+          for (field, type) in left.schema().schema():
+            if field == key1:
+              keySchema = DBSchema('key1',[(field, type)])
+              break
+
+          for (field, type) in right.schema().schema():
+            if field == key2:
+              keySchema2 = DBSchema('key2',[(field, type)])
+              break
+
+          if (keySchema is None or keySchema2 is None):
+            print ("Key Schema Error\n")
+            exit(0)
+
+          test_plan = Plan(root = Join(
+            lhsPlan = left,
+            rhsPlan = right,
+            method = 'hash',
+            lhsHashFn= 'hash(' + key1 + ') % 4', lhsKeySchema=keySchema,
+            rhsHashFn= 'hash(' + key2 + ') % 4', rhsKeySchema=keySchema2
+          ))
+        else:
+          test_plan = Plan(root = Join(
+            lhsPlan = left,
+            rhsPlan = right,
+            method = algorithm,
+            expr = relevant_expr
+          ))
 
         # Prepare and run the plan in sampling mode, and get the estimated cost.
         test_plan.prepare(self.db)
