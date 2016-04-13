@@ -345,9 +345,9 @@ class Join(Operator):
   # customized cost for Join operator
   # ===================================================
 
-  def cost(self, estimated):
-    subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
-    return self.localCost(estimated) + subPlanCost
+  # def cost(self, estimated):
+  #   subPlanCost = sum(map(lambda x: x.cost(estimated), self.inputs()))
+  #   return self.localCost(estimated) + subPlanCost
 
   def localCost(self, estimated):
     extraCost = 0

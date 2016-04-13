@@ -17,7 +17,12 @@ where
         and l_quantity < 24
 
 """
+# tables
+lineitem = db.query().fromTable('lineitem')
+    
 
+# schemas
 lineitemSchema = db.relationSchema('lineitem')
+
 
 
