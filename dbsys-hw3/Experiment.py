@@ -25,11 +25,11 @@ if __name__=="__main__":
 
 
   # tables
-  customer = db.query().fromTable('customer')
-  nation   = db.query().fromTable('nation')
-  orders   = db.query().fromTable('orders')
-  lineitem = db.query().fromTable('lineitem')
-  part     = db.query().fromTable('part')
+  # customer = db.query().fromTable('customer')
+  # nation   = db.query().fromTable('nation')
+  # orders   = db.query().fromTable('orders')
+  # lineitem = db.query().fromTable('lineitem')
+  # part     = db.query().fromTable('part')
 
   groupKeySchema = DBSchema('groupKey', [('ONE', 'int')])
   groupAggSchema = DBSchema('groupBy', [('revenue','float')])
