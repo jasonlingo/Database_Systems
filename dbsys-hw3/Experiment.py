@@ -43,6 +43,28 @@ if __name__=="__main__":
               groupHashFn=(lambda gbVal: hash(gbVal) % 1)).select(
               {'revenue' : ('revenue', 'float')}).finalize()
 
+
+  """
+  select
+          l_orderkey,
+          sum(l_extendedprice * (1 - l_discount)) as revenue,
+          o_orderdate,
+          o_shippriority
+  from
+          customer,
+          orders,
+          lineitem
+  where
+          c_mktsegment = 'BUILDING'
+          and c_custkey = o_custkey
+          and l_orderkey = o_orderkey
+          and o_orderdate < 19950315
+          and l_shipdate > 19950315
+  group by
+          l_orderkey,
+          o_orderdate,
+          o_shippriority
+  """
   ls1 = DBSchema('customerKey1', [('C_CUSTKEY', 'int')])
   rs1 = DBSchema('customerKey2', [('O_CUSTKEY', 'int')])
 
@@ -54,13 +76,13 @@ if __name__=="__main__":
 
   query3 = db.query().fromTable('customer').join(
               db.query().fromTable('orders'),
-              method = 'hash',
-              lhsHashFn = 'hash(C_CUSTKEY) % 5', lhsKeySchema = ls1,
-              rhsHashFn = 'hash(O_CUSTKEY) % 5', rhsKeySchema = rs1).join(
+              method='block-nested-loops',
+              expr='C_CUSTKEY == O_CUSTKEY',
+              ).join(
               db.query().fromTable('lineitem'),
-              method = 'hash',
-              lhsHashFn = 'hash(O_ORDERKEY) % 5', lhsKeySchema = ls2,
-              rhsHashFn = 'hash(L_ORDERKEY) % 5', rhsKeySchema = rs2).where(
+              method='block-nested-loops',
+              expr='O_ORDERKEY == L_ORDERKEY',
+              ).where(
               "C_MKTSEGMENT == 'BUILDING' and O_ORDERDATE < 19950315 and L_SHIPDATE > 19950315").groupBy(
               groupSchema=groupKeySchema,
               aggSchema=groupAggSchema,
@@ -72,3 +94,5 @@ if __name__=="__main__":
                'o_orderdate' : ('O_ORDERDATE', 'int'),
                'o_shippriority' : ('O_SHIPPRIORITY', 'int')}).finalize()
 
+  query3 = db.optimizer.optimizeQuery(query3)
+  print (query3.explain())
