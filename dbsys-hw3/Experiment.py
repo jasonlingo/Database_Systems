@@ -74,6 +74,7 @@ if __name__=="__main__":
   groupKeySchema = DBSchema('groupKey', [('L_ORDERKEY', 'int'), ('O_ORDERDATE', 'int'), ('O_SHIPPRIORITY', 'int')])
   groupAggSchema = DBSchema('groupAgg', [('revenue','float')])
 
+  print ("Processing query3...")
   query3 = db.query().fromTable('customer').join(
               db.query().fromTable('orders'),
               method='block-nested-loops',
@@ -94,5 +95,8 @@ if __name__=="__main__":
                'o_orderdate' : ('O_ORDERDATE', 'int'),
                'o_shippriority' : ('O_SHIPPRIORITY', 'int')}).finalize()
 
+  query3.sample(5.0)
+  print (query3.explain())
   query3 = db.optimizer.optimizeQuery(query3)
+  query3.sample(5.0)
   print (query3.explain())
