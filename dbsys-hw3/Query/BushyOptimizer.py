@@ -47,8 +47,6 @@ class BushyOptimizer(Optimizer):
   ...   db.createRelation('F', [('f1', 'int'), ('f2', 'int'), ('f3', 'int')])
   ... except ValueError:
   ...   pass
-
-
   >>> schema = db.relationSchema('A')
   >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
@@ -73,8 +71,48 @@ class BushyOptimizer(Optimizer):
   >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
-
-
+  >>> query7 = db.query().fromTable('salarys').join(\
+       db.query().fromTable('employee'),\
+       method='block-nested-loops', expr='id == s_eid').join(\
+       db.query().fromTable('department'),\
+       method='block-nested-loops', expr='depId == did').join(\
+       db.query().fromTable('tax'),\
+       method='block-nested-loops', expr='EIN == d_EIN')\
+       .finalize()
+  # >>> query7.sample(1.0)
+  >>> print(query7.explain())
+  >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
+  # >>> print([tup for tup in q7results])
+  >>> print(len(q7results))
+  >>> db.setOptimizer(BushyOptimizer)
+  >>> query7 = db.optimizer.optimizeQuery(query7)
+  # >>> query7.sample(1.0)
+  >>> print(query7.explain())
+  # >>> query8 = db.query().fromTable('employee').join(\
+  #       db.query().fromTable('department').select({'eid':('eid','int')}),\
+  #      method='block-nested-loops', expr='id == eid').join(\
+  #      db.query().fromTable('salarys'),\
+  #      method='block-nested-loops', expr='sid == id').where('sid > 0').select({'age':('age', 'int')}).finalize()
+  #
+  # >>> query8 = db.optimizer.optimizeQuery(query8)
+  # >>> query8.sample(1.0)
+  # >>> print(query8.explain())
+  # >>> q8results = [query8.schema().unpack(tup) for page in db.processQuery(query8) for tup in page[1]]
+  # >>> print([tup for tup in q8results])
+  #
+  # >>> query9 = db.query().fromTable('employee').join(\
+  #       db.query().fromTable('department').select({'eid':('eid','int')}),\
+  #      method='block-nested-loops', expr='id == eid').join(\
+  #      db.query().fromTable('salarys'),\
+  #      method='block-nested-loops', expr='sid == id').where('sid > 0').select({'age':('age', 'int')}).finalize()
+  #
+  # >>> db.setOptimizer(BushyOptimizer)
+  # >>> query9 = db.optimizer.optimizeQuery(query9)
+  # >>> query9.sample(1.0)
+  # >>> print(query9.explain())
+  # >>> q9results = [query9.schema().unpack(tup) for page in db.processQuery(query9) for tup in page[1]]
+  # >>> print([tup for tup in q9results])
+  >>> shutil.rmtree(Storage.FileManager.FileManager.defaultDataDir)
 ############################################################
   Join size 2
 ############################################################
@@ -114,7 +152,6 @@ class BushyOptimizer(Optimizer):
 #
 #   >>> query6 = db.optimizer.optimizeQuery(query6)
 #   >>> print (query6.explain())
-
 ############################################################
   Join size 6
 ############################################################
@@ -129,20 +166,13 @@ class BushyOptimizer(Optimizer):
        method='block-nested-loops', expr='d1 == e1').join(\
        db.query().fromTable('F'),\
        method='block-nested-loops', expr='e1 == f1').where('a1 > 0').finalize()
-
-
   >>> query6.sample(5.0)
   >>> print(query6.explain())
-
   >>> query6 = db.optimizer.optimizeQuery(query6)
   >>> print (query6.explain())
-
-
-
   ## Clean up the doctest
   # >>> shutil.rmtree(Storage.FileManager.FileManager.defaultDataDir)
   """
-
   def __init__(self, db):
     super().__init__(db)
 
@@ -203,7 +233,7 @@ class BushyOptimizer(Optimizer):
         # Find the best of the candidate joins.
         optimal_plans[frozenset(subset)] = self.get_best_join(candidate_joins, joins)
 
-    # Connect the operators above the first join=======
+    # Connect the operators above the first join
     # FIXME: still will lose some operators between joins
     end.subPlan = optimal_plans[frozenset(baseRelations)]
 

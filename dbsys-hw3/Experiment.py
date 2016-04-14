@@ -71,3 +71,4 @@ if __name__=="__main__":
                'revenue' : ('revenue', 'float'),
                'o_orderdate' : ('O_ORDERDATE', 'int'),
                'o_shippriority' : ('O_SHIPPRIORITY', 'int')}).finalize()
+

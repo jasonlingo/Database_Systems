@@ -147,7 +147,7 @@ class Optimizer:
   def getPlanCost(self, plan):
     key = plan.getPlanKey()
     if key not in self.costCache:
-        plan.sample(5.0)
+        plan.sample(1.0)
         cost = plan.cost(estimated=True)
         self.addPlanCost(key, cost)
     return self.costCache[key]

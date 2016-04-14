@@ -26,6 +26,7 @@ class Join(Operator):
     self.initializeSchema()
     self.initializeMethod(**kwargs)
 
+
   # Checks the join parameters.
   def validateJoin(self):
     # Valid join methods: "nested-loops", "block-nested-loops", "indexed", "hash"
@@ -377,6 +378,8 @@ class Join(Operator):
     We assume the page sizes of rhs and lhs are the same.
     """
     lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum = self.getPageInfo()
+    if None in [lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum]:
+      return 0
     pageCost = lhsPageSize / self.lhsSchema.size * self.tupleCost  #FIXME: need to multiply 80?
     extraCost = (lhsPageNum + self.lhsPlan.cardinality(estimated) * rhsPageNum)
     extraCost *= pageCost
@@ -389,6 +392,8 @@ class Join(Operator):
             (page number of lhs) + (page number of lhs) / ( (Block number - 2) * (page number of rhs) )
     """
     lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum = self.getPageInfo()
+    if None in [lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum]:
+      return 0
     bufPool    = self.storage.bufferPool
     pageCost = lhsPageSize / self.lhsSchema.size * self.tupleCost
 
@@ -406,8 +411,14 @@ class Join(Operator):
     """
     lhsRelId = self.lhsPlan.relationId()
     rhsRelId = self.rhsPlan.relationId()
-    lhsPageSize, lhsPageNum, lhsTupleNum = self.storage.relationStats(lhsRelId)
-    rhsPageSize, rhsPageNum, rhsTupleNum = self.storage.relationStats(rhsRelId)
+    try:
+      lhsPageSize, lhsPageNum, lhsTupleNum = self.storage.relationStats(lhsRelId)
+      rhsPageSize, rhsPageNum, rhsTupleNum = self.storage.relationStats(rhsRelId)
+    except ValueError:
+      lhsPageSize, lhsPageNum, lhsTupleNum =  None, None, None
+      rhsPageSize, rhsPageNum, rhsTupleNum =  None, None, None
+
+
     return lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum
 
   # Returns a single line description of the operator.
@@ -452,7 +463,6 @@ class Join(Operator):
         ))) + ")"
 
     return exprs
-
 
 # An iterator class for looping over pairs of pages from partition files.
 class PartitionIterator:
