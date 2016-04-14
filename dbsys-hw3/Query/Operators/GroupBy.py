@@ -178,4 +178,4 @@ class GroupBy(Operator):
     """
     partCost = self.subPlan.cardinality(estimated) * 2 # FIXME
     # partCost = 0
-    return super.cost() + partCost
+    return super().cost() + partCost
