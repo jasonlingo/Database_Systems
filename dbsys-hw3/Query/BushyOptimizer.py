@@ -48,46 +48,30 @@ class BushyOptimizer(Optimizer):
   ... except ValueError:
   ...   pass
   >>> schema = db.relationSchema('A')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
   >>> schema = db.relationSchema('B')
-  >>> for tup in [schema.pack(schema.instantiate(i, 4*i, 3*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 4*i, 3*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
   >>> schema = db.relationSchema('C')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
   >>> schema = db.relationSchema('D')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
   >>> schema = db.relationSchema('E')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
-  >>> schema = db.relationSchema('E')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(2000)]:
+  >>> schema = db.relationSchema('F')
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 3*i)) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
-  >>> query7 = db.query().fromTable('salarys').join(\
-       db.query().fromTable('employee'),\
-       method='block-nested-loops', expr='id == s_eid').join(\
-       db.query().fromTable('department'),\
-       method='block-nested-loops', expr='depId == did').join(\
-       db.query().fromTable('tax'),\
-       method='block-nested-loops', expr='EIN == d_EIN')\
-       .finalize()
-  # >>> query7.sample(1.0)
-  >>> print(query7.explain())
-  >>> q7results = [query7.schema().unpack(tup) for page in db.processQuery(query7) for tup in page[1]]
-  # >>> print([tup for tup in q7results])
-  >>> print(len(q7results))
-  >>> db.setOptimizer(BushyOptimizer)
-  >>> query7 = db.optimizer.optimizeQuery(query7)
-  # >>> query7.sample(1.0)
-  >>> print(query7.explain())
+
   # >>> query8 = db.query().fromTable('employee').join(\
   #       db.query().fromTable('department').select({'eid':('eid','int')}),\
   #      method='block-nested-loops', expr='id == eid').join(\
@@ -112,49 +96,48 @@ class BushyOptimizer(Optimizer):
   # >>> print(query9.explain())
   # >>> q9results = [query9.schema().unpack(tup) for page in db.processQuery(query9) for tup in page[1]]
   # >>> print([tup for tup in q9results])
-  >>> shutil.rmtree(Storage.FileManager.FileManager.defaultDataDir)
-############################################################
-  Join size 2
-############################################################
-#   >>> query6 = db.query().fromTable('A').join(\
-#         db.query().fromTable('B').select({'b1':('b1','int')}),\
-#        method='block-nested-loops', expr='b1 == a1').where('a1 > 0').finalize()
-#
-#
-#   >>> query6.sample(1.0)
-#   >>> print("Original query")
-#   >>> print(query6.explain())
-#
-#   >>> print("Optimizer")
-#   >>> query6 = db.optimizer.optimizeQuery(query6)
-#   >>> print (query6.explain())
-#
-#   >>> print("Optimizer")
-#   >>> query6 = db.optimizer.optimizeQuery(query6)
-#   >>> print (query6.explain())
-#   # >>> q6results = [query6.schema().unpack(tup) for page in db.processQuery(query6) for tup in page[1]]
-#   # >>> print([tup for tup in q6results])
-#
-# ############################################################
-#   Join size 4
-# ############################################################
-#   >>> query6 = db.query().fromTable('A').join(\
-#         db.query().fromTable('B').select({'b1':('b1','int')}),\
-#        method='block-nested-loops', expr='b1 == a1').join(\
-#        db.query().fromTable('C'),\
-#        method='block-nested-loops', expr='c1 == b1').join(\
-#        db.query().fromTable('D'),\
-#        method='block-nested-loops', expr='c1==d1').where('a1 > 0').finalize()
-#
-#
-#   >>> query6.sample(1.0)
-#   >>> print(query6.explain())
-#
-#   >>> query6 = db.optimizer.optimizeQuery(query6)
-#   >>> print (query6.explain())
-############################################################
-  Join size 6
-############################################################
+  ############################################################
+    Join size 2
+  ############################################################
+  #   >>> query6 = db.query().fromTable('A').join(\
+  #         db.query().fromTable('B').select({'b1':('b1','int')}),\
+  #        method='block-nested-loops', expr='b1 == a1').where('a1 > 0').finalize()
+  #
+  #
+  #   >>> query6.sample(1.0)
+  #   >>> print("Original query")
+  #   >>> print(query6.explain())
+  #
+  #   >>> print("Optimizer")
+  #   >>> query6 = db.optimizer.optimizeQuery(query6)
+  #   >>> print (query6.explain())
+  #
+  #   >>> print("Optimizer")
+  #   >>> query6 = db.optimizer.optimizeQuery(query6)
+  #   >>> print (query6.explain())
+  #   # >>> q6results = [query6.schema().unpack(tup) for page in db.processQuery(query6) for tup in page[1]]
+  #   # >>> print([tup for tup in q6results])
+  #
+  # ############################################################
+  #   Join size 4
+  # ############################################################
+  #   >>> query6 = db.query().fromTable('A').join(\
+  #         db.query().fromTable('B').select({'b1':('b1','int')}),\
+  #        method='block-nested-loops', expr='b1 == a1').join(\
+  #        db.query().fromTable('C'),\
+  #        method='block-nested-loops', expr='c1 == b1').join(\
+  #        db.query().fromTable('D'),\
+  #        method='block-nested-loops', expr='c1==d1').where('a1 > 0').finalize()
+  #
+  #
+  #   >>> query6.sample(1.0)
+  #   >>> print(query6.explain())
+  #
+  #   >>> query6 = db.optimizer.optimizeQuery(query6)
+  #   >>> print (query6.explain())
+  ############################################################
+    Join size 6
+  ############################################################
   >>> query6 = db.query().fromTable('A').join(\
         db.query().fromTable('B').select({'b1':('b1','int')}),\
        method='block-nested-loops', expr='b1 == a1').join(\
