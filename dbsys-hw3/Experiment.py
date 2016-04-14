@@ -49,7 +49,7 @@ if __name__=="__main__":
   end = time.time()
   print ("Query 1 Processing time (unoptimized): ", end - start)
   print([tup for tup in q1results])
-  print ("\n\n\n")
+  print ("\n")
 
   query1.sample(5.0)
   print (query1.explain())
@@ -57,14 +57,66 @@ if __name__=="__main__":
   query1.sample(5.0)
   print (query1.explain())
 
-
   print ("Processing query1...")
   start = time.time()
   q1results = [query1.schema().unpack(tup) for page in db.processQuery(query1) for tup in page[1]]
   print([tup for tup in q1results])
   end = time.time()
-  print([tup for tup in q1results])
   print ("Query 1 processing time (optimizerd): ", end - start,"\n\n\n")
+
+
+
+  '''
+  select
+          sum(l_extendedprice * (1 - l_discount)) as promo_revenue
+  from
+          lineitem,
+          part
+  where
+          l_partkey = p_partkey
+          and l_shipdate >= 19950901
+          and l_shipdate < 19951001
+  '''
+
+  ls1 = DBSchema('partkey2',[('L_PARTKEY', 'int')])
+  rs1 = DBSchema('partkey1',[('P_PARTKEY', 'int')])
+
+  groupKeySchema = DBSchema('groupKey', [('ONE', 'int')])
+  groupAggSchema = DBSchema('groupBy', [('promo_revenue','float')])
+
+  query2 = db.query().fromTable('lineitem').join(
+              db.query().fromTable('part'),
+              method='block-nested-loops',
+              expr='L_PARTKEY == P_PARTKEY').where(
+              "L_SHIPDATE >= 19950901 and L_SHIPDATE < 19951001").groupBy(
+              groupSchema=groupKeySchema,
+              aggSchema=groupAggSchema,
+              groupExpr=(lambda e: 1),
+              aggExprs=[(0, lambda acc, e: acc + (e.L_EXTENDEDPRICE * (1 - e.L_DISCOUNT)), lambda x: x)],
+              groupHashFn=(lambda gbVal: hash(gbVal) % 1)).select(
+              {'promo_revenue' : ('promo_revenue','float')}).finalize()
+
+  print ("Processing query2 (unoptimized...")
+  start = time.time()
+  results = [query2.schema().unpack(tup) for page in db.processQuery(query2) for tup in page[1]]
+  end = time.time()
+  print ("Query 2 Processing time (unoptimized): ", end - start)
+  print([tup for tup in results])
+  print ("\n")
+
+  query2.sample(5.0)
+  print (query2.explain())
+  query2 = db.optimizer.optimizeQuery(query2)
+  query2.sample(5.0)
+  print (query2.explain())
+
+  print ("Processing query2...")
+  start = time.time()
+  results = [query2.schema().unpack(tup) for page in db.processQuery(query2) for tup in page[1]]
+  print([tup for tup in results])
+  end = time.time()
+  print ("Query 2 processing time (optimizerd): ", end - start,"\n\n\n")
+
 
   """
   select
@@ -117,21 +169,23 @@ if __name__=="__main__":
                'o_orderdate' : ('O_ORDERDATE', 'int'),
                'o_shippriority' : ('O_SHIPPRIORITY', 'int')}).finalize()
 
-  # query3.sample(5.0)
-  # print (query3.explain())
-  # query3 = db.optimizer.optimizeQuery(query3)
-  # query3.sample(5.0)
-  # print (query3.explain())
-
-  query1.sample(5.0)
-  print (query1.explain())
-  query1 = db.optimizer.optimizeQuery(query1)
-  query1.sample(5.0)
-  print (query1.explain())
-
-
-  print ("Processing query1...")
+  print ("Processing query3 (unoptimized...")
   start = time.time()
-  q1results = [query1.schema().unpack(tup) for page in db.processQuery(query1) for tup in page[1]]
+  results = [query3.schema().unpack(tup) for page in db.processQuery(query3) for tup in page[1]]
   end = time.time()
-  print ("Query 1 processing time: ", end - start,"\n\n\n")
+  print ("Query 3 Processing time (unoptimized): ", end - start)
+  print([tup for tup in results])
+  print ("\n")
+
+  query3.sample(5.0)
+  print (query3.explain())
+  query3 = db.optimizer.optimizeQuery(query3)
+  query3.sample(5.0)
+  print (query3.explain())
+
+  print ("Processing query3...")
+  start = time.time()
+  results = [query3.schema().unpack(tup) for page in db.processQuery(query3) for tup in page[1]]
+  print([tup for tup in results])
+  end = time.time()
+  print ("Query 3 processing time (optimizerd): ", end - start,"\n\n\n")
