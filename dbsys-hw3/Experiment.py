@@ -312,9 +312,6 @@ if __name__=="__main__":
               db.query().fromTable('nation'),
               method='block-nested-loops',
               expr='N_NATIONKEY == S_NATIONKEY').join(
-              db.query().fromTable('customer'),
-              method='block-nested-loops',
-              expr='C_NATIONKEY == S_NATIONKEY').join(
               db.query().fromTable('region'),
               method='block-nested-loops',
               expr='N_REGIONKEY == R_REGIONKEY').where(
@@ -326,6 +323,11 @@ if __name__=="__main__":
               groupHashFn=(lambda gbVal: hash(gbVal) % 10)).select(
               {'n_name' : ('N_NAME', 'char(25)'),
                'revenue' : ('revenue', 'float')}).finalize()
+#
+# join(
+#               db.query().fromTable('customer'),
+#               method='block-nested-loops',
+#               expr='C_NATIONKEY == S_NATIONKEY')
 
   print ("Processing query5 (unoptimized...")
   start = time.time()
