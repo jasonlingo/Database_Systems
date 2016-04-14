@@ -43,6 +43,28 @@ if __name__=="__main__":
               groupHashFn=(lambda gbVal: hash(gbVal) % 1)).select(
               {'revenue' : ('revenue', 'float')}).finalize()
 
+  print ("Processing query1 (unoptimized...")
+  start = time.time()
+  q1results = [query1.schema().unpack(tup) for page in db.processQuery(query1) for tup in page[1]]
+  end = time.time()
+  print ("Query 1 Processing time (unoptimized): ", end - start)
+  print([tup for tup in q1results])
+  print ("\n\n\n")
+
+  query1.sample(5.0)
+  print (query1.explain())
+  query1 = db.optimizer.optimizeQuery(query1)
+  query1.sample(5.0)
+  print (query1.explain())
+
+
+  print ("Processing query1...")
+  start = time.time()
+  q1results = [query1.schema().unpack(tup) for page in db.processQuery(query1) for tup in page[1]]
+  print([tup for tup in q1results])
+  end = time.time()
+  print([tup for tup in q1results])
+  print ("Query 1 processing time (optimizerd): ", end - start,"\n\n\n")
 
   """
   select
@@ -95,8 +117,21 @@ if __name__=="__main__":
                'o_orderdate' : ('O_ORDERDATE', 'int'),
                'o_shippriority' : ('O_SHIPPRIORITY', 'int')}).finalize()
 
-  query3.sample(5.0)
-  print (query3.explain())
-  query3 = db.optimizer.optimizeQuery(query3)
-  query3.sample(5.0)
-  print (query3.explain())
+  # query3.sample(5.0)
+  # print (query3.explain())
+  # query3 = db.optimizer.optimizeQuery(query3)
+  # query3.sample(5.0)
+  # print (query3.explain())
+
+  query1.sample(5.0)
+  print (query1.explain())
+  query1 = db.optimizer.optimizeQuery(query1)
+  query1.sample(5.0)
+  print (query1.explain())
+
+
+  print ("Processing query1...")
+  start = time.time()
+  q1results = [query1.schema().unpack(tup) for page in db.processQuery(query1) for tup in page[1]]
+  end = time.time()
+  print ("Query 1 processing time: ", end - start,"\n\n\n")
