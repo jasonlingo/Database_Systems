@@ -421,7 +421,7 @@ class Optimizer:
     dummy.subPlan = plan.root
     end = dummy
     while end:
-      if isinstance(end.subPlan, Join):
+      if isinstance(end.subPlan, Join) or isinstance(end, TableScan):
         break
       elif isinstance(end.subPlan, Union):
         # When encounter Union before Joins, return the original plan because we already
