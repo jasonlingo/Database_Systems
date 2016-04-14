@@ -107,6 +107,7 @@ if __name__=="__main__":
   query2.sample(5.0)
   print (query2.explain())
   query2 = db.optimizer.optimizeQuery(query2)
+
   query2.sample(5.0)
   print (query2.explain())
 
