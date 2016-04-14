@@ -296,33 +296,29 @@ if __name__=="__main__":
   e2schema = schema.rename('custkey2', {'id':'id2', 'age':'age2'})
 
   query5 = db.query().fromTable('customer').join(
-              db.query().fromTable('orders'),
-              method='block-nested-loops',
-              expr='C_CUSTKEY == O_CUSTKEY').join(
-              db.query().fromTable('lineitem'),
-              method='block-nested-loops',
-              expr='L_ORDERKEY == O_ORDERKEY').join(
-              db.query().fromTable('supplier'),
-              method='block-nested-loops',
-              expr='L_SUPPKEY == S_SUPPKEY'). join(
-              db.query().fromTable('nation'),
-              method='block-nested-loops',
-              expr='N_NATIONKEY == S_NATIONKEY').join(
-              db.query().fromTable('customer'),
-              rhsSchema=e2schema,
-              method='block-nested-loops',
-              expr='C_NATIONKEY == S_NATIONKEY').join(
-              db.query().fromTable('region'),
-              method='block-nested-loops',
-              expr='N_REGIONKEY == R_REGIONKEY').where(
-              "R_NAME == 'ASIA' and O_ORDERDATE >= 19940101 and O_ORDERDATE < 19950101").groupBy(
-              groupSchema=groupKeySchema,
-              aggSchema=groupAggSchema,
-              groupExpr=(lambda e: e.N_NAME),
-              aggExprs=[(0, lambda acc, e: acc + (e.L_EXTENDEDPRICE * (1 - e.L_DISCOUNT)), lambda x: x)],
-              groupHashFn=(lambda gbVal: hash(gbVal) % 10)).select(
-              {'n_name' : ('N_NAME', 'char(25)'),
-               'revenue' : ('revenue', 'float')}).finalize()
+                db.query().fromTable('orders'),
+                method='block-nested-loops',
+                expr='C_CUSTKEY == O_CUSTKEY').join(
+                db.query().fromTable('lineitem'),
+                method='block-nested-loops',
+                expr='L_ORDERKEY == O_ORDERKEY').join(
+                db.query().fromTable('supplier'),
+                method='block-nested-loops',
+                expr='L_SUPPKEY == S_SUPPKEY'). join(
+                db.query().fromTable('nation'),
+                method='block-nested-loops',
+                expr='N_NATIONKEY == S_NATIONKEY and S_NATIONKEY = C_NATIONKEY').join(
+                db.query().fromTable('region'),
+                method='block-nested-loops',
+                expr='N_REGIONKEY == R_REGIONKEY').where(
+                "R_NAME == 'ASIA' and O_ORDERDATE >= 19940101 and O_ORDERDATE < 19950101").groupBy(
+                groupSchema=groupKeySchema,
+                aggSchema=groupAggSchema,
+                groupExpr=(lambda e: e.N_NAME),
+                aggExprs=[(0, lambda acc, e: acc + (e.L_EXTENDEDPRICE * (1 - e.L_DISCOUNT)), lambda x: x)],
+                groupHashFn=(lambda gbVal: hash(gbVal) % 10)).select(
+                {'n_name' : ('N_NAME', 'char(25)'),
+                 'revenue' : ('revenue', 'float')}).finalize()
 
   print ("Processing query5 (unoptimized...")
   start = time.time()
