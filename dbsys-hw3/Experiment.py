@@ -8,7 +8,7 @@ def getResult(db, query):
 
 if __name__=="__main__":
 
-  db = Database.Database(dataDir='./data-tpch-sf0.001')
+  db = Database.Database(dataDir='./data')
 
   """
   select
