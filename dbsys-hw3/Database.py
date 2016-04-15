@@ -47,7 +47,7 @@ class Database:
     self.optimizer       = other.optimizer
 
   def setOptimizer(self, opti):
-    self.optimizer = opti(self)
+    self.optimizer = opti
 
   def close(self):
     if self.storage:

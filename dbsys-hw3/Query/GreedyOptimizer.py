@@ -157,7 +157,7 @@ class GreedyOptimizer(Optimizer):
 
     end = plan.root
     while end:
-      if isinstance(end.subPlan, Join):
+      if isinstance(end, TableScan) or isinstance(end.subPlan, Join):
         break
       elif isinstance(end.subPlan, Union):
         # When encounter Union before Joins, return the original plan because we already
