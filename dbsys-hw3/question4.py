@@ -92,7 +92,6 @@ end = time.time()
 print("Running time: ", end - start)
 query6.sample(10.0)
 print(query6_1.explain(),"\n\n")
-shutil.rmtree(Storage.FileManager.FileManager.defaultDataDir)
 
 ############################################################
 # Join
