@@ -144,13 +144,17 @@ print(query6_1.explain(),"\n\n")
 ############################################################
 
 print ("Join size 6")
-query6 = db.query().fromTable('A').join( \
-        db.query().fromTable('B'), \
-        method='block-nested-loops', expr='b1 == a1').join( \
-        db.query().fromTable('C'), \
-        method='block-nested-loops', expr='c1 == b1').join( \
-        db.query().fromTable('D'), \
-        method='block-nested-loops', expr='c1==d1').select({'a1': ('a1', 'int')}).finalize()
+query6 = db.query().fromTable('A').join(
+          db.query().fromTable('B').select({'b1':('b1','int')}),
+         method='block-nested-loops', expr='b1 == a1').join(
+        db.query().fromTable('C'),
+        method='block-nested-loops', expr='c1 == b1').join(
+        db.query().fromTable('D'),
+        method='block-nested-loops', expr='d1 == c1').join(
+        db.query().fromTable('E'),
+        method='block-nested-loops', expr='d1 == e1').join(
+        db.query().fromTable('F'),
+        method='block-nested-loops', expr='e1 == f1').select({'a1': ('a1', 'int')}).finalize()
 
 query6.sample(10.0)
 print("Original query")
