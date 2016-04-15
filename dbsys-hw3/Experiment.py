@@ -248,7 +248,7 @@ if __name__=="__main__":
   # print ("Query 4 Processing time (unoptimized): ", end - start)
   # print([tup for tup in results])
   # print ("\n")
-  # 
+  #
   # query4.sample(10.0)
   # print (query4.explain())
   # query4 = db.optimizer.optimizeQuery(query4)
