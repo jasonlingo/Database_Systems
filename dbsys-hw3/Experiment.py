@@ -292,9 +292,6 @@ if __name__=="__main__":
   groupKeySchema = DBSchema('groupKey', [('N_NAME', 'char(25)')])
   groupAggSchema = DBSchema('groupAgg', [('revenue','float')])
 
-  schema = db.relationSchema('custkey')
-  e2schema = schema.rename('custkey2', {'id':'id2', 'age':'age2'})
-
   query5 = db.query().fromTable('customer').join(
                 db.query().fromTable('orders'),
                 method='block-nested-loops',
@@ -320,23 +317,23 @@ if __name__=="__main__":
                 {'n_name' : ('N_NAME', 'char(25)'),
                  'revenue' : ('revenue', 'float')}).finalize()
 
-  print ("Processing query5 (unoptimized...")
-  start = time.time()
-  results = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
-  end = time.time()
-  print ("Query 5 Processing time (unoptimized): ", end - start)
-  print([tup for tup in results])
-  print ("\n")
-
-  # query5.sample(10.0)
-  # print (query5.explain())
-  # query5 = db.optimizer.optimizeQuery(query5)
-  # query5.sample(10.0)
-  # print (query5.explain())
-  #
-  # print ("Processing query 5...")
+  # print ("Processing query5 (unoptimized...")
   # start = time.time()
   # results = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
-  # print([tup for tup in results])
   # end = time.time()
-  # # print ("Query 5 processing time (optimizerd): ", end - start,"\n\n\n")
+  # print ("Query 5 Processing time (unoptimized): ", end - start)
+  # print([tup for tup in results])
+  # print ("\n")
+
+  query5.sample(10.0)
+  print (query5.explain())
+  query5 = db.optimizer.optimizeQuery(query5)
+  query5.sample(10.0)
+  print (query5.explain())
+
+  print ("Processing query 5...")
+  start = time.time()
+  results = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
+  print([tup for tup in results])
+  end = time.time()
+  print ("Query 5 processing time (optimizerd): ", end - start,"\n\n\n")
