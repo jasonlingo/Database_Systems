@@ -4,6 +4,8 @@ Question 4
 
 To evaluate the performance of different optimizer, we compare the time for optimizing the same query. The queries being tested contain join plans of size 2, 4, 6, 8. The relations are all simple relations with name like "A", "B" and "C" and consist of relations with triples of integers. We didn't test join plan with larger size because it takes too long to optimize such queries.
 
+The code for getting the result below are in the question4.py file. 
+
 Join size 2
 Original query
 Project[3,cost=854.00](projections={'a1': ('a1', 'int')})
@@ -122,9 +124,12 @@ Project[11,cost=2292.00](projections={'a1': ('a1', 'int')})
         TableScan[5,cost=20.00](D)
         TableScan[7,cost=20.00](E)
 
+The optimize result by BushyOptimizer or join plans with size large than 6 are not presented here, because we kept getting error "Too many open files" when optimizing the join plans, and we don't know how to solve this since these files are essential relation files that cannot be deleted during execution of the program.
+
 
 Exercise 5.
 
+Codes for getting the following result can be found at "Experiment.py".
 Query explanations:
 
 Query 1.
@@ -208,4 +213,4 @@ Query 4.
               TableScan[10,cost=25.00](nation)
 
 Query 5 . 
-We have no explain for Query 5 because it took very long time to execute it.
+We have no explain for Query 5 because it took too much time to execute.
