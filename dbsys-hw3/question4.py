@@ -65,7 +65,7 @@ query6 = db.query().fromTable('A').join( \
 
 query6.sample(10.0)
 print("Original query")
-print(query6.explain())
+print(query6.explain(), "\n")
 
 print("Optimizer")
 start = time.time()
@@ -92,8 +92,7 @@ end = time.time()
 print("Running time: ", end - start)
 query6.sample(10.0)
 print(query6_1.explain(),"\n\n")
-#  q6results = [query6.schema().unpack(tup) for page in db.processQuery(query6) for tup in page[1]]
-#  print([tup for tup in q6results])
+shutil.rmtree(Storage.FileManager.FileManager.defaultDataDir)
 
 ############################################################
 # Join
@@ -101,26 +100,17 @@ print(query6_1.explain(),"\n\n")
 # 4
 ############################################################
 print ("Join size 4")
-query6 = db.query().fromTable('A').join( \
-        db.query().fromTable('B').select({'b1': ('b1', 'int')}), \
-        method='block-nested-loops', expr='b1 == a1').join( \
-        db.query().fromTable('C'), \
-        method='block-nested-loops', expr='c1 == b1').join( \
-        db.query().fromTable('D'), \
-        method='block-nested-loops', expr='c1==d1').where('a1 > 0').finalize()
-
-print ("Join size 4")
-query6 = db.query().fromTable('A').join( \
-        db.query().fromTable('B').select({'b1': ('b1', 'int')}), \
-        method='block-nested-loops', expr='b1 == a1').join( \
-        db.query().fromTable('C'), \
-        method='block-nested-loops', expr='c1 == b1').join( \
-        db.query().fromTable('D'), \
-        method='block-nested-loops', expr='c1==d1').where('a1 > 0').finalize()
+query6 = db.query().fromTable('A').join(
+        db.query().fromTable('B'),
+        method='block-nested-loops', expr='b1 == a1').join(
+        db.query().fromTable('C'),
+        method='block-nested-loops', expr='c1 == b1').join(
+        db.query().fromTable('D'),
+        method='block-nested-loops', expr='c1==d1').select({'a1': ('a1', 'int')}).finalize()
 
 query6.sample(10.0)
 print("Original query")
-print(query6.explain())
+print(query6.explain(), "\n")
 
 print("Optimizer")
 start = time.time()
@@ -147,6 +137,7 @@ end = time.time()
 print("Running time: ", end - start)
 query6.sample(10.0)
 print(query6_1.explain(),"\n\n")
+
 ############################################################
 # Join
 # size
@@ -155,16 +146,16 @@ print(query6_1.explain(),"\n\n")
 
 print ("Join size 6")
 query6 = db.query().fromTable('A').join( \
-        db.query().fromTable('B').select({'b1': ('b1', 'int')}), \
+        db.query().fromTable('B'), \
         method='block-nested-loops', expr='b1 == a1').join( \
         db.query().fromTable('C'), \
         method='block-nested-loops', expr='c1 == b1').join( \
         db.query().fromTable('D'), \
-        method='block-nested-loops', expr='c1==d1').where('a1 > 0').finalize()
+        method='block-nested-loops', expr='c1==d1').select({'a1': ('a1', 'int')}).finalize()
 
 query6.sample(10.0)
 print("Original query")
-print(query6.explain())
+print(query6.explain(), "\n")
 
 print("Optimizer")
 start = time.time()
