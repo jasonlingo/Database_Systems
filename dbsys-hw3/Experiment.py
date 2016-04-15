@@ -209,7 +209,7 @@ if __name__=="__main__":
   #         c_address,
   #         c_comment
   # '''
-  #
+
   # groupKeySchema = DBSchema('groupKey', [('C_CUSTKEY', 'int'), ('C_NAME', 'char(25)'), ('C_ACCTBAL', 'float'),
   #                                        ('C_PHONE', 'char(15)'), ('N_NAME', 'char(25)'), ('C_ADDRESS', 'char(40)'),
   #                                        ('C_COMMENT', 'char(117)')])
@@ -240,15 +240,15 @@ if __name__=="__main__":
   #              'c_phone' : ('C_PHONE', 'char(15)'),
   #              'c_comment' : ('C_COMMENT', 'char(117)')}).finalize()
   #
-  #
-  # # print ("Processing query 4 (unoptimized...")
-  # # start = time.time()
-  # # results = [query4.schema().unpack(tup) for page in db.processQuery(query4) for tup in page[1]]
-  # # end = time.time()
-  # # print ("Query 4 Processing time (unoptimized): ", end - start)
-  # # print([tup for tup in results])
-  # # print ("\n")
-  #
+
+  # print ("Processing query 4 (unoptimized...")
+  # start = time.time()
+  # results = [query4.schema().unpack(tup) for page in db.processQuery(query4) for tup in page[1]]
+  # end = time.time()
+  # print ("Query 4 Processing time (unoptimized): ", end - start)
+  # print([tup for tup in results])
+  # print ("\n")
+  # 
   # query4.sample(10.0)
   # print (query4.explain())
   # query4 = db.optimizer.optimizeQuery(query4)
@@ -261,129 +261,131 @@ if __name__=="__main__":
   # print([tup for tup in results])
   # end = time.time()
   # print ("Query 4 processing time (optimizerd): ", end - start,"\n\n\n")
-  # groupKeySchema = DBSchema('groupKey', [('C_CUSTKEY', 'int'), ('C_NAME', 'char(25)'), ('C_ACCTBAL', 'double'),
-  #                                        ('C_PHONE', 'char(15)'), ('N_NAME', 'char(25)'), ('C_ADDRESS', 'char(40)'),
-  #                                        ('C_COMMENT', 'char(117)')])
-  # groupAggSchema = DBSchema('groupAgg', [('revenue', 'double')])
   #
-  # query4 = db.query().fromTable('customer').join(
-  #             db.query().fromTable('orders'),
-  #             method='block-nested-loops',
-  #             expr='C_CUSTKEY == O_CUSTKEY').join(
-  #             db.query().fromTable('lineitem'),
-  #             method='block-nested-loops',
-  #             expr='L_ORDERKEY == O_ORDERKEY').join(
-  #             db.query().fromTable('nation'),
-  #             method='block-nested-loops',
-  #             expr='C_NATIONKEY == N_NATIONKEY').where(
-  #             "L_RETURNFLAG == 'R' and O_ORDERDATE < 19940101 and O_ORDERDATE >= 19931001").groupBy(
-  #             groupSchema=groupKeySchema,
-  #             aggSchema=groupAggSchema,
-  #             groupExpr=(lambda e: (e.C_CUSTKEY, e.C_NAME, e.C_ACCTBAL, e.C_PHONE, e.N_NAME, e.C_ADDRESS, e.C_COMMENT)),
-  #             aggExprs=[(0, lambda acc, e: acc + (e.L_EXTENDEDPRICE * (1 - e.L_DISCOUNT)), lambda x: x)],
-  #             groupHashFn=(lambda gbVal: hash(gbVal) % 10)).select(
-  #             {'c_custkey' : ('C_CUSTKEY', 'int'),
-  #              'c_name' : ('C_NAME', 'char(25)'),
-  #              'revenue' : ('revenue', 'double'),
-  #              'c_acctbal' : ('C_ACCTBAL', 'double'),
-  #              'n_name' : ('N_NAME', 'char(25)'),
-  #              'c_address' : ('C_ADDRESS', 'char(40)'),
-  #              'c_phone' : ('C_PHONE', 'char(15)'),
-  #              'c_comment' : ('C_COMMENT', 'char(117)')}).finalize()
-
-
-  # print ("Processing query 4 (unoptimized…")
-  # start = time.time()
-  # results = [query4.schema().unpack(tup) for page in db.processQuery(query4) for tup in page[1]]
-  # end = time.time()
-  # print ("Query 4 Processing time (unoptimized): ", end - start)
-  # print([tup for tup in results])
-  # print ("\n")
-
-  # query4.sample(10.0)
-  # print (query4.explain())
-  # query4 = db.optimizer.optimizeQuery(query4)
-  # query4.sample(10.0)
-  # print (query4.explain())
   #
-  # print ("Processing query4…")
-  # start = time.time()
-  # results = [query4.schema().unpack(tup) for page in db.processQuery(query4) for tup in page[1]]
-  # print([tup for tup in results])
-  # end = time.time()
-  # print ("Query 4 processing time (optimizerd): ", end - start,"\n\n\n")
-  '''
-  query 5
-  select
-          n_name,
-          sum(l_extendedprice * (1 - l_discount)) as revenue
-  from
-          customer,
-          orders,
-          lineitem,
-          supplier,
-          nation,
-          region
-  where
-          c_custkey = o_custkey
-          and l_orderkey = o_orderkey
-          and l_suppkey = s_suppkey
-          and c_nationkey = s_nationkey
-          and s_nationkey = n_nationkey
-          and n_regionkey = r_regionkey
-          and r_name = 'ASIA'
-          and o_orderdate >= 19940101
-          and o_orderdate < 19950101
-  group by
-          n_name
-  '''
+  groupKeySchema = DBSchema('groupKey', [('C_CUSTKEY', 'int'), ('C_NAME', 'char(25)'), ('C_ACCTBAL', 'double'),
+                                         ('C_PHONE', 'char(15)'), ('N_NAME', 'char(25)'), ('C_ADDRESS', 'char(40)'),
+                                         ('C_COMMENT', 'char(117)')])
+  groupAggSchema = DBSchema('groupAgg', [('revenue', 'double')])
+
+  query4 = db.query().fromTable('customer').join(
+              db.query().fromTable('orders'),
+              method='block-nested-loops',
+              expr='C_CUSTKEY == O_CUSTKEY').join(
+              db.query().fromTable('lineitem'),
+              method='block-nested-loops',
+              expr='L_ORDERKEY == O_ORDERKEY').join(
+              db.query().fromTable('nation'),
+              method='block-nested-loops',
+              expr='C_NATIONKEY == N_NATIONKEY').where(
+              "L_RETURNFLAG == 'R' and O_ORDERDATE < 19940101 and O_ORDERDATE >= 19931001").groupBy(
+              groupSchema=groupKeySchema,
+              aggSchema=groupAggSchema,
+              groupExpr=(lambda e: (e.C_CUSTKEY, e.C_NAME, e.C_ACCTBAL, e.C_PHONE, e.N_NAME, e.C_ADDRESS, e.C_COMMENT)),
+              aggExprs=[(0, lambda acc, e: acc + (e.L_EXTENDEDPRICE * (1 - e.L_DISCOUNT)), lambda x: x)],
+              groupHashFn=(lambda gbVal: hash(gbVal) % 10)).select(
+              {'c_custkey' : ('C_CUSTKEY', 'int'),
+               'c_name' : ('C_NAME', 'char(25)'),
+               'revenue' : ('revenue', 'double'),
+               'c_acctbal' : ('C_ACCTBAL', 'double'),
+               'n_name' : ('N_NAME', 'char(25)'),
+               'c_address' : ('C_ADDRESS', 'char(40)'),
+               'c_phone' : ('C_PHONE', 'char(15)'),
+               'c_comment' : ('C_COMMENT', 'char(117)')}).finalize()
 
 
-  groupKeySchema = DBSchema('groupKey', [('N_NAME', 'char(25)')])
-  groupAggSchema = DBSchema('groupAgg', [('revenue','float')])
-
-  query5 = db.query().fromTable('customer').join(
-                db.query().fromTable('orders'),
-                method='block-nested-loops',
-                expr='C_CUSTKEY == O_CUSTKEY').join(
-                db.query().fromTable('lineitem'),
-                method='block-nested-loops',
-                expr='L_ORDERKEY == O_ORDERKEY').join(
-                db.query().fromTable('supplier'),
-                method='block-nested-loops',
-                expr='L_SUPPKEY == S_SUPPKEY'). join(
-                db.query().fromTable('nation'),
-                method='block-nested-loops',
-                expr='N_NATIONKEY == S_NATIONKEY and S_NATIONKEY == C_NATIONKEY').join(
-                db.query().fromTable('region'),
-                method='block-nested-loops',
-                expr='N_REGIONKEY == R_REGIONKEY').where(
-                "R_NAME == 'ASIA' and O_ORDERDATE >= 19940101 and O_ORDERDATE < 19950101").groupBy(
-                groupSchema=groupKeySchema,
-                aggSchema=groupAggSchema,
-                groupExpr=(lambda e: e.N_NAME),
-                aggExprs=[(0, lambda acc, e: acc + (e.L_EXTENDEDPRICE * (1 - e.L_DISCOUNT)), lambda x: x)],
-                groupHashFn=(lambda gbVal: hash(gbVal) % 10)).select(
-                {'n_name' : ('N_NAME', 'char(25)'),
-                 'revenue' : ('revenue', 'float')}).finalize()
-
-  print ("Processing query5 (unoptimized...")
+  print ("Processing query 4 (unoptimized…")
   start = time.time()
-  results = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
+  results = [query4.schema().unpack(tup) for page in db.processQuery(query4) for tup in page[1]]
   end = time.time()
-  print ("Query 5 Processing time (unoptimized): ", end - start)
+  print ("Query 4 Processing time (unoptimized): ", end - start)
   print([tup for tup in results])
   print ("\n")
 
-  query5.sample(10.0)
-  print (query5.explain())
-  query5 = db.optimizer.optimizeQuery(query5)
-  query5.sample(10.0)
-  print (query5.explain())
+  query4.sample(10.0)
+  print (query4.explain())
+  query4 = db.optimizer.optimizeQuery(query4)
+  query4.sample(10.0)
+  print (query4.explain())
 
-  print ("Processing query 5...")
+  print ("Processing query4…")
   start = time.time()
-  results = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
+  results = [query4.schema().unpack(tup) for page in db.processQuery(query4) for tup in page[1]]
   print([tup for tup in results])
   end = time.time()
-  print ("Query 5 processing time (optimizerd): ", end - start,"\n\n\n")
+  print ("Query 4 processing time (optimizerd): ", end - start,"\n\n\n")
+  # '''
+  # query 5
+  # select
+  #         n_name,
+  #         sum(l_extendedprice * (1 - l_discount)) as revenue
+  # from
+  #         customer,
+  #         orders,
+  #         lineitem,
+  #         supplier,
+  #         nation,
+  #         region
+  # where
+  #         c_custkey = o_custkey
+  #         and l_orderkey = o_orderkey
+  #         and l_suppkey = s_suppkey
+  #         and c_nationkey = s_nationkey
+  #         and s_nationkey = n_nationkey
+  #         and n_regionkey = r_regionkey
+  #         and r_name = 'ASIA'
+  #         and o_orderdate >= 19940101
+  #         and o_orderdate < 19950101
+  # group by
+  #         n_name
+  # '''
+  #
+  #
+  # groupKeySchema = DBSchema('groupKey', [('N_NAME', 'char(25)')])
+  # groupAggSchema = DBSchema('groupAgg', [('revenue','float')])
+  #
+  # query5 = db.query().fromTable('customer').join(
+  #               db.query().fromTable('orders'),
+  #               method='block-nested-loops',
+  #               expr='C_CUSTKEY == O_CUSTKEY').join(
+  #               db.query().fromTable('lineitem'),
+  #               method='block-nested-loops',
+  #               expr='L_ORDERKEY == O_ORDERKEY').join(
+  #               db.query().fromTable('supplier'),
+  #               method='block-nested-loops',
+  #               expr='L_SUPPKEY == S_SUPPKEY'). join(
+  #               db.query().fromTable('nation'),
+  #               method='block-nested-loops',
+  #               expr='N_NATIONKEY == S_NATIONKEY and S_NATIONKEY == C_NATIONKEY').join(
+  #               db.query().fromTable('region'),
+  #               method='block-nested-loops',
+  #               expr='N_REGIONKEY == R_REGIONKEY').where(
+  #               "R_NAME == 'ASIA' and O_ORDERDATE >= 19940101 and O_ORDERDATE < 19950101").groupBy(
+  #               groupSchema=groupKeySchema,
+  #               aggSchema=groupAggSchema,
+  #               groupExpr=(lambda e: e.N_NAME),
+  #               aggExprs=[(0, lambda acc, e: acc + (e.L_EXTENDEDPRICE * (1 - e.L_DISCOUNT)), lambda x: x)],
+  #               groupHashFn=(lambda gbVal: hash(gbVal) % 10)).select(
+  #               {'n_name' : ('N_NAME', 'char(25)'),
+  #                'revenue' : ('revenue', 'float')}).finalize()
+  #
+  # print ("Processing query5 (unoptimized...")
+  # start = time.time()
+  # results = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
+  # end = time.time()
+  # print ("Query 5 Processing time (unoptimized): ", end - start)
+  # print([tup for tup in results])
+  # print ("\n")
+  #
+  # query5.sample(10.0)
+  # print (query5.explain())
+  # query5 = db.optimizer.optimizeQuery(query5)
+  # query5.sample(10.0)
+  # print (query5.explain())
+  #
+  # print ("Processing query 5...")
+  # start = time.time()
+  # results = [query5.schema().unpack(tup) for page in db.processQuery(query5) for tup in page[1]]
+  # print([tup for tup in results])
+  # end = time.time()
+  # print ("Query 5 processing time (optimizerd): ", end - start,"\n\n\n")
