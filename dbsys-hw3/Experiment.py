@@ -354,7 +354,7 @@ if __name__=="__main__":
                 expr='L_SUPPKEY == S_SUPPKEY'). join(
                 db.query().fromTable('nation'),
                 method='block-nested-loops',
-                expr='N_NATIONKEY == S_NATIONKEY and S_NATIONKEY = C_NATIONKEY').join(
+                expr='N_NATIONKEY == S_NATIONKEY and S_NATIONKEY == C_NATIONKEY').join(
                 db.query().fromTable('region'),
                 method='block-nested-loops',
                 expr='N_REGIONKEY == R_REGIONKEY').where(
