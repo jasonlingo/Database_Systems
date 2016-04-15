@@ -278,6 +278,7 @@ class DBSchema:
 
   def unpack(self, buffer):
     if self.clazz and self.binrepr:
+      x = self.binrepr.unpack(buffer)
       values = [Types.formatValue(v, self.types[i], False)
                   for i, v in enumerate(self.binrepr.unpack(buffer))]
       return self.clazz._make(values)

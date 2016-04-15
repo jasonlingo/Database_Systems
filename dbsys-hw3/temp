@@ -1,0 +1,84 @@
+Exercise 5.
+
+Query 1.
+    Query plan explain before optimization:
+    Project[3,cost=12030.00](projections={'revenue': ('revenue', 'float')})
+      GroupBy[2,cost=12025.00](groupSchema=groupKey[(ONE,int)], aggSchema=groupBy[(revenue,float)])
+        Select[1,cost=12010.00](predicate='(L_SHIPDATE >= 19940101) and (L_SHIPDATE < 19950101) and (0.06 - 0.01 <= L_DISCOUNT <= 0.06 + 0.01) and (L_QUANTITY < 24)')
+          TableScan[0,cost=6005.00](lineitem)
+
+    Query plan explain after optimization:
+    Project[3,cost=12030.00](projections={'revenue': ('revenue', 'float')})
+      GroupBy[2,cost=12025.00](groupSchema=groupKey[(ONE,int)], aggSchema=groupBy[(revenue,float)])
+        Select[1,cost=12010.00](predicate='(L_SHIPDATE >= 19940101) and (L_SHIPDATE < 19950101) and (0.06 - 0.01 <= L_DISCOUNT <= 0.06 + 0.01) and (L_QUANTITY < 24)')
+          TableScan[0,cost=6005.00](lineitem)
+
+Query 2.
+    Query plan explain before optimization:
+    Project[10,cost=18587.00](projections={'promo_revenue': ('promo_revenue', 'float')})
+      GroupBy[9,cost=18587.00](groupSchema=groupKey[(ONE,int)], aggSchema=groupBy[(promo_revenue,float)])
+        Select[8,cost=18587.00](predicate='L_SHIPDATE >= 19950901 and L_SHIPDATE < 19951001')
+          BNLJoin[7,cost=18487.00](expr='L_PARTKEY == P_PARTKEY')
+            TableScan[6,cost=200.00](part)
+            TableScan[5,cost=6005.00](lineitem)
+
+    Query plan explain after optimization:            
+    Project[10,cost=12410.00](projections={'promo_revenue': ('promo_revenue', 'float')})
+      GroupBy[9,cost=12410.00](groupSchema=groupKey[(ONE,int)], aggSchema=groupBy[(promo_revenue,float)])
+        NLJoin[13,cost=12410.00](expr='L_PARTKEY == P_PARTKEY')
+          TableScan[6,cost=200.00](part)
+          Select[11,cost=12010.00](predicate='(L_SHIPDATE >= 19950901) and (L_SHIPDATE < 19951001)')
+            TableScan[5,cost=6005.00](lineitem)
+
+Query 3. 
+    Query plan explain before optimization:
+    Project[24,cost=15700.00](projections={'o_shippriority': ('O_SHIPPRIORITY', 'int'), 'revenue': ('revenue', 'float'), 'l_orderkey': ('L_ORDERKEY', 'int'), 'o_orderdate': ('O_ORDERDATE', 'int')})
+      GroupBy[23,cost=15700.00](groupSchema=groupKey[(L_ORDERKEY,int),(O_ORDERDATE,int),(O_SHIPPRIORITY,int)], aggSchema=groupAgg[(revenue,float)])
+        Select[22,cost=15700.00](predicate='C_MKTSEGMENT == 'BUILDING' and O_ORDERDATE < 19950315 and L_SHIPDATE > 19950315')
+          BNLJoin[21,cost=15580.00](expr='O_ORDERKEY == L_ORDERKEY')
+            TableScan[20,cost=6005.00](lineitem)
+            BNLJoin[19,cost=3478.00](expr='C_CUSTKEY == O_CUSTKEY')
+              TableScan[18,cost=1500.00](orders)
+              TableScan[17,cost=150.00](customer)
+    
+    Query plan explain after optimization: 
+    Project[24,cost=16216.00](projections={'o_shippriority': ('O_SHIPPRIORITY', 'int'), 'revenue': ('revenue', 'float'), 'l_orderkey': ('L_ORDERKEY', 'int'), 'o_orderdate': ('O_ORDERDATE', 'int')})
+      GroupBy[23,cost=16216.00](groupSchema=groupKey[(L_ORDERKEY,int),(O_ORDERDATE,int),(O_SHIPPRIORITY,int)], aggSchema=groupAgg[(revenue,float)])
+        BNLJoin[43,cost=16216.00](expr='O_ORDERKEY == L_ORDERKEY')
+          Select[28,cost=12010.00](predicate='(L_SHIPDATE > 19950315)')
+            TableScan[20,cost=6005.00](lineitem)
+          BNLJoin[41,cost=4206.00](expr='C_CUSTKEY == O_CUSTKEY')
+            Select[27,cost=3000.00](predicate='(O_ORDERDATE < 19950315)')
+              TableScan[18,cost=1500.00](orders)
+            Select[26,cost=300.00](predicate='(C_MKTSEGMENT == 'BUILDING')')
+              TableScan[17,cost=150.00](customer)   
+
+
+Query 4. 
+    Query plan explain before optimization: 
+    Project[14,cost=15796.00](projections={'c_phone': ('C_PHONE', 'char(15)'), 'c_acctbal': ('C_ACCTBAL', 'float'), 'c_name': ('C_NAME', 'char(25)'), 'c_address': ('C_ADDRESS', 'char(40)'), 'c_custkey': ('C_CUSTKEY', 'int'), 'c_comment': ('C_COMMENT', 'char(117)'), 'n_name': ('N_NAME', 'char(25)'), 'revenue': ('revenue', 'float')})
+      GroupBy[13,cost=15796.00](groupSchema=groupKey[(C_CUSTKEY,int),(C_NAME,char(25)),(C_ACCTBAL,float),(C_PHONE,char(15)),(N_NAME,char(25)),(C_ADDRESS,char(40)),(C_COMMENT,char(117))], aggSchema=groupAgg[(revenue,float)])
+        Select[12,cost=15796.00](predicate='L_RETURNFLAG == 'R' and O_ORDERDATE < 19940101 and O_ORDERDATE >= 19931001')
+          BNLJoin[11,cost=15796.00](expr='C_NATIONKEY == N_NATIONKEY')
+            TableScan[10,cost=25.00](nation)
+            BNLJoin[9,cost=15680.00](expr='L_ORDERKEY == O_ORDERKEY')
+              TableScan[8,cost=6005.00](lineitem)
+              BNLJoin[7,cost=3478.00](expr='C_CUSTKEY == O_CUSTKEY')
+                TableScan[6,cost=1500.00](orders)
+                TableScan[5,cost=150.00](customer)
+
+    Query plan explain after optimization: 
+    Project[14,cost=15404.00](projections={'c_phone': ('C_PHONE', 'char(15)'), 'c_acctbal': ('C_ACCTBAL', 'float'), 'c_name': ('C_NAME', 'char(25)'), 'c_address': ('C_ADDRESS', 'char(40)'), 'c_custkey': ('C_CUSTKEY', 'int'), 'c_comment': ('C_COMMENT', 'char(117)'), 'n_name': ('N_NAME', 'char(25)'), 'revenue': ('revenue', 'float')})
+      GroupBy[13,cost=15404.00](groupSchema=groupKey[(C_CUSTKEY,int),(C_NAME,char(25)),(C_ACCTBAL,float),(C_PHONE,char(15)),(N_NAME,char(25)),(C_ADDRESS,char(40)),(C_COMMENT,char(117))], aggSchema=groupAgg[(revenue,float)])
+        NLJoin[70,cost=15404.00](expr='C_NATIONKEY == N_NATIONKEY')
+          TableScan[5,cost=150.00](customer)
+          BNLJoin[59,cost=15104.00](expr='L_ORDERKEY == O_ORDERKEY')
+            Select[18,cost=12010.00](predicate='(L_RETURNFLAG == 'R')')
+              TableScan[8,cost=6005.00](lineitem)
+            BNLJoin[27,cost=3094.00](expr='True')
+              Select[17,cost=3000.00](predicate='(O_ORDERDATE < 19940101) and (O_ORDERDATE >= 19931001)')
+                TableScan[6,cost=1500.00](orders)
+              TableScan[10,cost=25.00](nation)
+
+Query 5 . 
+We have no explain for Query 5 because it took very long time to execute it.

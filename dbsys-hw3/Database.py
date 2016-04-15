@@ -49,6 +49,9 @@ class Database:
   def setOptimizer(self, opti):
     self.optimizer = opti(self)
 
+  def setStatsManger(self, statsMgr):
+    self.statsMgr = statsMgr
+
   def close(self):
     if self.storage:
       self.storage.close()
