@@ -1,0 +1,6 @@
+600.416 Homework 3
+
+Question 4
+
+To evaluate the performance of different optimizer, we compare the time for optimizing the same query. The queries being tested contain join plans of size 2, 4, 6, 8. The relations are all simple relations with name like "A", "B" and "C" and consist of relations with triples of integers. We didn't test join plan with larger size because it takes too long to optimize such queries.
+
