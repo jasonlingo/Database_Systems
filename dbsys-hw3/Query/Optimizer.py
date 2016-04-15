@@ -9,12 +9,8 @@ from Query.Operators.Union import Union
 from Query.Operators.TableScan import TableScan
 from Utils.ExpressionInfo import ExpressionInfo
 from Catalog.Schema import DBSchema
+from Query.StatisticsManager import StatisticsManager
 
-# Helper for removing items from a tuple, while preserving order.
-def tuple_without(t, x):
-  s = list(t)
-  s.remove(x)
-  return tuple(s)
 
 class Optimizer:
   """
@@ -33,7 +29,7 @@ class Optimizer:
   ... except ValueError:
   ...   pass
   >>> try:
-  ...   db.createRelation('employee', [('id', 'int'), ('age', 'int')])
+  ...   db.createRelation('employee', [('id', 'int'), ('age', 'int'), ('name', 'char(3)')])
   ... except ValueError:
   ...   pass
   >>> try:
@@ -47,7 +43,7 @@ class Optimizer:
 
  # Populate relation
   >>> schema = db.relationSchema('employee')
-  >>> for tup in [schema.pack(schema.instantiate(i, 2*i)) for i in range(20)]:
+  >>> for tup in [schema.pack(schema.instantiate(i, 2*i, 'e' + str(i))) for i in range(20)]:
   ...    _ = db.insertTuple(schema.name, tup)
   ...
 
@@ -104,7 +100,7 @@ class Optimizer:
         db.query().fromTable('department').select({'eid':('eid','int')}),\
        method='block-nested-loops', expr='id == eid').join(\
        db.query().fromTable('salarys'),\
-       method='block-nested-loops', expr='sid == id').where('sid > 0').select({'age':('age', 'int')}).finalize()
+       method='block-nested-loops', expr='sid == id').where('sid > 0').select({'name':('name', 'char(3)'), 'age':('age', 'int')}).finalize()
 
   >>> query8 = db.optimizer.optimizeQuery(query8)
   >>> query8.sample(1.0)
@@ -138,10 +134,15 @@ class Optimizer:
     self.db = db
     self.statsCache = {}
     self.costCache = {}
+    self.statsMgr = StatisticsManager(db)
 
   # Caches the cost of a plan computed during query optimization.
   def addPlanCost(self, plan, cost):
-    self.costCache[plan] = cost
+    if isinstance(plan, Plan):
+      key = plan.getPlanKey()
+      self.costCache[key] = cost
+    else:
+      self.costCache[plan] = cost
 
   # Checks if we have already computed the cost of this plan.
   def getPlanCost(self, plan):
@@ -175,6 +176,14 @@ class Optimizer:
       # base relation
       return op
 
+    elif op.operatorType() == "Select":
+      # need to pushdown this operator close to its respective base relation
+      return self.pushdownSelect(op)
+
+    elif op.operatorType() == "Project":
+      # need to pushdown this operator close to its respective base relation
+      return self.pushdownProject(op)
+
     elif op.operatorType() in ["Sort", "GroupBy"]:
       # no need to push down these operators, but need to check their children
       op.subPlan = self.pushdownOperator(op.subPlan)
@@ -186,17 +195,6 @@ class Optimizer:
       op.rhsPlan = self.pushdownOperator(op.rhsPlan)
       return op
 
-    elif op.operatorType() == "Select":
-      # need to pushdown this operator close to its respective base relation
-      return self.pushdownSelect(op)
-
-    elif op.operatorType() == "Project":
-      # need to pushdown this operator close to its respective base relation
-      return self.pushdownProject(op)
-
-    else:
-      print("Wrong operator " + op.operatorType(), file=sys.stderr)
-
   def pushdownSelect(self, op):
     # pushdown its child first and then push down the current operator
     op.subPlan = self.pushdownOperator(op.subPlan)
@@ -205,26 +203,18 @@ class Optimizer:
       return op
 
     if op.subPlan.operatorType() == "Select":
-      # combine two consecutive Selects
+      # Combine two consecutive Selects
+      # According to the "Equivalence of Expression" on Lecture 8, page 24,
+      # we can combine two consecutive Select operators and the result will
+      # be the same.
+      # i.e. Project_{predicateA ^ predicateB}(E) = Project_predicateA(Project_predicateB(E))
       op.selectExpr = "(%s) and (%s)" % (op.selectExpr, op.subPlan.selectExpr)
       op.subPlan = op.subPlan.subPlan
       return op
 
-      # Selects are communtative
-      # two consecutive Selects, choose the Select order according to the selectivity rank (descending):
-      #    1 - selectivity(predicate) / cost of the predicate
-      # opSel = (1 - op.selectivity(True)) / op.tupleCost
-      # subSel = (1 - op.subPlan.selectivity(True)) / op.subPlan.tupleCost
-      #
-      # if opSel < subSel:
-      #   topOp = op.subPlan
-      #   op.subPlan = op.subPlan.subPlan
-      #   topOp.subPlan = self.pushdownOperator(op)
-      #   return topOp
-      # else:
-      #   return op
-
     elif op.subPlan.operatorType() == "Sort":
+      # Select can be push down to the button of the Sort.
+      # After push down the Select, we still have to try to push down it further.
       topOp = op.subPlan
       op.subPlan = op.subPlan.subPlan
       topOp.subPlan = self.pushdownOperator(op)
@@ -234,8 +224,10 @@ class Optimizer:
       # push select to the button of a union to reduce the union complexity
       # because the schemas of lhs and rhs are the same, we can use the original selectExpr for two subPlans
       topOp = op.subPlan
-      topOp.lhsPlan = self.pushdownOperator(Select(op.subPlan.lhsPlan, op.selectExpr))
-      topOp.rhsPlan = self.pushdownOperator(Select(op.subPlan.rhsPlan, op.selectExpr))
+      lsubPlan = Select(op.subPlan.lhsPlan, op.selectExpr)
+      rsubPlan = Select(op.subPlan.rhsPlan, op.selectExpr)
+      topOp.lhsPlan = self.pushdownOperator(lsubPlan)
+      topOp.rhsPlan = self.pushdownOperator(rsubPlan)
       return topOp
 
     elif "Join" in op.subPlan.operatorType():
@@ -247,7 +239,7 @@ class Optimizer:
 
       lhsExprs = []
       rhsExprs = []
-      remainingExprs = []
+      remainExprs = []
 
       lhsAttrs = set(op.subPlan.lhsPlan.schema().fields)
       rhsAttrs = set(op.subPlan.rhsPlan.schema().fields)
@@ -263,7 +255,7 @@ class Optimizer:
           rhsExprs.append(e)
           add = True
         if not add:
-          remainingExprs.append(e)
+          remainExprs.append(e)
 
       if lhsExprs:
         newLhsExpr = ' and '.join(lhsExprs)
@@ -275,22 +267,15 @@ class Optimizer:
         rhsSelect = Select(op.subPlan.rhsPlan, newRhsExpr)
         op.subPlan.rhsPlan = self.pushdownOperator(rhsSelect)
 
-      # deal with the remaining predicates  #TODO: check if we need this
-      if remainingExprs:
-        print("has remaining attributes")
-        newExpr = ' and '.join(remainingExprs)
-        result = Select(op.subPlan, newExpr)
+      # deal with the remaining predicates
+      if remainExprs:
+        newExpr = ' and '.join(remainExprs)
+        return Select(op.subPlan, newExpr)
       else:
-        result = op.subPlan
-
-      return result
-
-    else:
-      print("wrong operator " + op.subPlan.operatorType(), file=sys.stderr)
-
+        return op.subPlan
 
   def pushdownProject(self, op):
-    # pushdown its child first and then push down the current operator
+    # pushdown op's child first and then push down the current operator
     op.subPlan = self.pushdownOperator(op.subPlan)
 
     if op.subPlan.operatorType() in ["GroupBy", "TableScan", "Sort"]:
@@ -303,8 +288,8 @@ class Optimizer:
       # If the upper Project contains attributes that is the subset of the attributes of
       # the lower Project, then we can discard the lower Project.
 
-      opAttr = set([v[0] for v in op.projectExprs.values()])
-      subPlanAttr = set([v[0] for v in op.subPlan.projectExprs.values()])
+      opAttr = set(op.schema().fields)
+      subPlanAttr = set(op.subPlan.schema().fields)
       if opAttr.issubset(subPlanAttr):
         op.subPlan = op.subPlan.subPlan
         return self.pushdownProject(op)
@@ -315,7 +300,7 @@ class Optimizer:
       # If the attributes of Select is a subset of that of Project, then we can swap
       # the order of Project and Select and pushdown the Project operator.
 
-      projectAttrs = set([v[0] for v in op.projectExprs.values()])
+      projectAttrs = set(op.schema().fields)
       selectAttrs = ExpressionInfo(op.subPlan.selectExpr).getAttributes()
       if selectAttrs.issubset(projectAttrs):
         topOp = op.subPlan
@@ -330,8 +315,10 @@ class Optimizer:
       # we can directly pushdown the Project to the subPlans of the UnionAll.
 
       topOp = op.subPlan
-      topOp.lhsPlan = self.pushdownOperator(Project(op.subPlan.lhsPlan, op.projectExprs))
-      topOp.rhsPlan = self.pushdownOperator(Project(op.subPlan.rhsPlan, op.projectExprs))
+      lhsProject = Project(op.subPlan.lhsPlan, op.projectExprs)
+      rhsProject = Project(op.subPlan.rhsPlan, op.projectExprs)
+      topOp.lhsPlan = self.pushdownOperator(lhsProject)
+      topOp.rhsPlan = self.pushdownOperator(rhsProject)
       return topOp
 
     elif "Join" in op.subPlan.operatorType():
@@ -340,13 +327,11 @@ class Optimizer:
       # Project expression.
       # For those attributes that have not been assigned, we keep a new Project containing
       # those remained attributes above the Join.
-
       lhsAttrs = set(op.subPlan.lhsPlan.schema().fields)
       rhsAttrs = set(op.subPlan.rhsPlan.schema().fields)
-
       lhsProjectExprs = {}
       rhsProjectExprs = {}
-      remainingProjectExprs = False
+      skipCurrOp = True
 
       joinAttrs = ExpressionInfo(op.subPlan.joinExpr).getAttributes()
 
@@ -360,44 +345,34 @@ class Optimizer:
           rhsProjectExprs[attr] = op.projectExprs[attr]
           add = True
         if not add:
-          remainingProjectExprs = True
+          skipCurrOp = False
 
       projectAttrs = set(op.projectExprs.keys())
 
       if joinAttrs.issubset(projectAttrs):
         if lhsProjectExprs:
-          op.subPlan.lhsPlan = self.pushdownOperator(Project(op.subPlan.lhsPlan, lhsProjectExprs))
+          lhsProject = Project(op.subPlan.lhsPlan, lhsProjectExprs)
+          op.subPlan.lhsPlan = self.pushdownOperator(lhsProject)
         if rhsProjectExprs:
-          op.subPlan.rhsPlan = self.pushdownOperator(Project(op.subPlan.rhsPlan, rhsProjectExprs))
+          rhsProject = Project(op.subPlan.rhsPlan, rhsProjectExprs)
+          op.subPlan.rhsPlan = self.pushdownOperator(rhsProject)
 
-      # todo: check whether we need this
-      # if op.subPlan.lhsPlan.operatorType() == "UnionAll":
-      #   op.subPlan.lhsPlan.validateSchema()
-      #
-      # op.subPlan.lhsSchema = op.subPlan.lhsPlan.schema()
-      #
-      # if op.subPlan.rhsPlan.operatorType() == "UnionAll":
-      #   op.subPlan.rhsPlan.validateSchema()
-
-      # op.subPlan.rhsSchema = op.subPlan.rhsPlan.schema()
-
-      # op.subPlan.initializeSchema()
-
-      result = op
-      # Remove op from the tree if there are no remaining project expressions, and each side of the join recieved a projection
-      if not remainingProjectExprs and lhsProjectExprs and rhsProjectExprs:
-        result = op.subPlan
-      return result
-
-    else:
-      print("wrong operator " + op.subPlan.operatorType(), file=sys.stderr)
-
+      # check if the Project's expressions are assigned to appropriate sub-plans.
+      # If one exprs is empty or there are remaining exprs, we still need to keep the
+      # original Project operator.
+      # If all Project's exprs are assign to two sub-plans, then we can discard this
+      # Project operator.
+      if lhsProjectExprs and rhsProjectExprs or skipCurrOp:
+        return op.subPlan
+      else:
+        return op
 
   # Returns an optimized query plan with joins ordered via a System-R style
   # dyanmic programming algorithm. The plan cost should be compared with the
   # use of the cost model below.
   def pickJoinOrder(self, plan):
     """
+    Use dynamic programming to find a best join order (System-R).
     First extract base relation (stop at UnionAll because two joins above and under UnionAll cannot be exchanged)
     Perform pickJoinOrder for subPlans under each UnionAll.
     Keep top operators before the first Join and connect it back after reordering Joins
@@ -417,9 +392,8 @@ class Optimizer:
 
     # Keep the top operators before the first Join.
     # After picking the join order, connect the top operators back to the new operation tree.
-    dummy = Select(None, "")
-    dummy.subPlan = plan.root
-    end = dummy
+    end = Select(None, "")
+    end.subPlan = plan.root
     while end:
       if isinstance(end, TableScan) or isinstance(end.subPlan, Join):
         break
@@ -434,115 +408,113 @@ class Optimizer:
     # perform pickJoinOrder for those join above the UnionAlls.
     joins = set(plan.joinBeforeUnion)
 
-    # Define the dynamic programming table.
-    optimal_plans = {}
+    # For dynamic programming
+    dpPlan = {}
 
     # Establish optimal access paths.
     for relation in baseRelations:
-      optimal_plans[frozenset((relation,))] = relation
-      # print ('relation type', type(relation), frozenset((relation,)))
+      dpPlan[frozenset((relation,))] = relation
 
     # Calculate cost using dynamic programming
     for i in range(2, len(baseRelations) + 1):
       for subset in itertools.combinations(baseRelations, i):
 
         # Build the set of candidate joins.
-        candidate_joins = set()
-        for candidate_relation in subset:
-          candidate_joins.add((
-            optimal_plans[frozenset(tuple_without(subset, candidate_relation))],
-            optimal_plans[frozenset((candidate_relation,))]
-          ))
+        candidateJoins = set()
+        for candidateRelation in subset:
+          candidateJoins.add((dpPlan[frozenset(tupleWithout(subset, candidateRelation))],
+                              dpPlan[frozenset((candidateRelation,))]))
 
-        # Find the best of the candidate joins.
-        optimal_plans[frozenset(subset)] = self.get_best_join(candidate_joins, joins)
+        # Find the current best join plan and store it for next iteration
+        dpPlan[frozenset(subset)] = self.findBestJoin(candidateJoins, joins)
 
     # Connect the operators above the first join
-    # FIXME: still will lose some operators between joins
-    end.subPlan = optimal_plans[frozenset(baseRelations)]
+    end.subPlan = dpPlan[frozenset(baseRelations)]
 
     # Reconstruct the best plan, prepare and return.
-    newPlan = Plan(root=plan.root)
-    newPlan.prepare(self.db)
-    return newPlan
+    bestPlan = Plan(root=plan.root)
+    bestPlan.prepare(self.db)
+    return bestPlan
 
-  def get_best_join(self, candidates, required_joins):
-    best_plan_cost = sys.maxsize
-    best_plan = None
+  def findBestJoin(self, candidates, joins):
+    bestCost = sys.maxsize
+    bestPlan = None
 
-    for left, right in candidates:
-      relevant_expr = None
+    for lhs, rhs in candidates:
+      relevantExpr = None
 
       # Find the joinExpr corresponding to the current join candidate. If there is none, it's a
       # cartesian product.
-      for join in required_joins:
-        names = ExpressionInfo(join.joinExpr).getAttributes()
-        # hashJoin = False
-        if set(right.schema().fields).intersection(names) and set(left.schema().fields).intersection(names):
-          relevant_expr = join.joinExpr
+      for join in joins:
+        attrs = ExpressionInfo(join.joinExpr).getAttributes()
+        hashJoin = False
 
-          # # for hash join
-          # rhsKeySchema = self.buildKeySchema("rhsKey", right.schema().fields, right.schema().types, set(right.schema().fields).intersection(names), updateAttr=True)
-          # lhsKeySchema = self.buildKeySchema("lhsKey", left.schema().fields, left.schema().types, set(left.schema().fields).intersection(names), updateAttr=False)
-          # rhsFields = ["rhsKey_" + f for f in right.schema().fields]
-          # attrMap = {}
-          # orgFileds = right.schema().fields
-          # for i in range(len(rhsFields)):
-          #   attrMap[orgFileds[i]] = rhsFields[i]
-          # rhsNewSchema = right.schema().rename("rhsSchema2", attrMap)
-          # # print("-----")
-          # # print(rhsKeySchema.toString())
-          # # print(lhsKeySchema.toString())
-          # # print(rhsNewSchema.toString())
-          # # print(right.schema().toString())
-          # hashJoin = True
+        rhsAttr = set(rhs.schema().fields).intersection(attrs)
+        lhsAttr = set(lhs.schema().fields).intersection(attrs)
+        if lhsAttr and rhsAttr:
+          relevantExpr = join.joinExpr
+
+          # construct relevant schema for hash join
+          rhsKeySchema = self.buildKeySchema("rhsKey", rhs.schema().fields, rhs.schema().types, rhsAttr, updateAttr=True)
+          lhsKeySchema = self.buildKeySchema("lhsKey", lhs.schema().fields, lhs.schema().types, lhsAttr, updateAttr=False)
+          rhsFields = ["rhsKey_" + f for f in rhs.schema().fields]
+          attrMap = {}
+          orgFileds = rhs.schema().fields
+          for i in range(len(rhsFields)):
+            attrMap[orgFileds[i]] = rhsFields[i]
+
+          # Construct a new schema for rhs to prevent from joining two relations that
+          # have the same attribute name.
+          rhsNewSchema = rhs.schema().rename("rhsSchema2", attrMap)
+
+          hashJoin = True
           break
 
         else:
-          relevant_expr = 'True'
+          relevantExpr = 'True'
 
       # We don't use index-join because we don't necessarily have index for the join.
       # Construct a join plan for the current candidate, for each possible join algorithm.
-      # TODO: Evaluate more than just nested loop joins, and determine feasibility of those methods.
       for algo in ["nested-loops", "block-nested-loops"]:
-        # if algo != "hash":
-        test_plan = Plan(root = Join(
-          lhsPlan = left,
-          rhsPlan = right,
-          method = algo,
-          expr = relevant_expr
-        ))
 
-        # elif hashJoin:
-        #   lhsHashFn = "hash(" + lhsKeySchema.fields[0] + ") % 8"
-        #   rhsHashFn = "hash(" + rhsKeySchema.fields[0] + ") % 8"
-        #
-        #   joinPlan = Join(
-        #     lhsPlan=left,
-        #     rhsPlan=right,
-        #   method='hash',
-        #   rhsSchema=rhsNewSchema,
-        #   lhsHashFn=lhsHashFn, lhsKeySchema=lhsKeySchema,
-        #   rhsHashFn=rhsHashFn, rhsKeySchema=rhsKeySchema
-        #   )
-        #   print(joinPlan.conciseExplain())
-        #   test_plan = Plan(root=joinPlan)
-        #
-        # else:
-        #   continue
+        if algo != "hash":
+          testPlan = Plan(root=Join(
+            lhsPlan=lhs,
+            rhsPlan=rhs,
+            method=algo,
+            expr=relevantExpr
+          ))
+
+        elif hashJoin:
+          lhsHashFn = "hash(" + lhsKeySchema.fields[0] + ") % 8"
+          rhsHashFn = "hash(" + rhsKeySchema.fields[0] + ") % 8"
+
+          joinPlan = Join(
+            lhsPlan=lhs,
+            rhsPlan=rhs,
+            method='hash',
+            rhsSchema=rhsNewSchema,
+            lhsHashFn=lhsHashFn, lhsKeySchema=lhsKeySchema,
+            rhsHashFn=rhsHashFn, rhsKeySchema=rhsKeySchema
+          )
+          testPlan = Plan(root=joinPlan)
+
+        else:
+          # we don't have enough infor for hash join, so skip the hash join test.
+          continue
 
         # Prepare and run the plan in sampling mode, and get the estimated cost.
-        test_plan.prepare(self.db)
-        cost = self.getPlanCost(test_plan)
+        testPlan.prepare(self.db)
+        cost = self.getPlanCost(testPlan)
 
-        # Update running best.
-        if cost < best_plan_cost:
-          best_plan_cost = cost
-          best_plan = test_plan
+        # update best plan
+        if cost < bestCost:
+          bestCost = cost
+          bestPlan = testPlan
 
     # Need to return the root operator rather than the plan itself, since it's going back into the
     # table.
-    return best_plan.root
+    return bestPlan.root
 
   def buildKeySchema(self, name, fields, types, attrs, updateAttr=False):
     keys = []
@@ -559,6 +531,13 @@ class Optimizer:
     pushedDown_plan = self.pushdownOperators(plan)
     joinPicked_plan = self.pickJoinOrder(pushedDown_plan)
     return joinPicked_plan
+
+
+def tupleWithout(t, x):
+  s = list(t)
+  s.remove(x)
+  return tuple(s)
+
 
 if __name__ == "__main__":
   import doctest

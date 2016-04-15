@@ -18,7 +18,7 @@ class Project(Operator):
     self.subPlan      = subPlan
     self.projectExprs = projectExprs
     self.outputSchema = DBSchema(self.relationId(), \
-                          [(k, v[1]) for (k,v) in self.projectExprs.items()])
+                          [(k, v[1]) for (k, v) in self.projectExprs.items()])
 
   # Returns the output schema of this operator
   def schema(self):

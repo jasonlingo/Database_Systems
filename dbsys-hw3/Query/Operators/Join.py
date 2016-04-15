@@ -368,19 +368,22 @@ class Join(Operator):
           (page number of lhs) + (tuple number of lhs) * (page number of rhs)
 
     For computing the IO cost, we compare the disk and memory IO speed (listed on lecture 2, page 10).
-    The time to read the 1 MB data from disk is 80 times longer than that from memory (20,000,000 / 250,000)
+    The time to read the 1 MB data from disk is 80 times longer than that from memory (20,000,000 / 250,000).
+    However, now many database use fast storage and multiplying 80 would make the optimization only consider
+    Page IO cost. So here we would not multiply it by 80.
 
     But here we assume the disk speed is faster than ordinary disk. For example, if we use SSD or other
     in-memory DB, then the multiplier will be much less than 80. Here we choose a multiplier of 2 to
     differentiate the cost for page IO and memory access.
 
-    So the cost for reading one page should be (page size / tuple size) * (tuple cost * 80).
+    So the cost for reading one page should be (page size / tuple size) * tuple cost.
     We assume the page sizes of rhs and lhs are the same.
     """
     lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum = self.getPageInfo()
     if None in [lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum]:
       return 0
-    pageCost = lhsPageSize / self.lhsSchema.size * self.tupleCost  #FIXME: need to multiply 80?
+
+    pageCost = lhsPageSize / self.lhsSchema.size * self.tupleCost
     extraCost = (lhsPageNum + self.lhsPlan.cardinality(estimated) * rhsPageNum)
     extraCost *= pageCost
     # print("nl cost: %f" % extraCost)
@@ -394,6 +397,7 @@ class Join(Operator):
     lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum = self.getPageInfo()
     if None in [lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum]:
       return 0
+
     bufPool    = self.storage.bufferPool
     pageCost = lhsPageSize / self.lhsSchema.size * self.tupleCost
 
@@ -415,9 +419,7 @@ class Join(Operator):
       lhsPageSize, lhsPageNum, lhsTupleNum = self.storage.relationStats(lhsRelId)
       rhsPageSize, rhsPageNum, rhsTupleNum = self.storage.relationStats(rhsRelId)
     except ValueError:
-      lhsPageSize, lhsPageNum, lhsTupleNum =  None, None, None
-      rhsPageSize, rhsPageNum, rhsTupleNum =  None, None, None
-
+      return None, None, None, None, None, None
 
     return lhsPageSize, lhsPageNum, lhsTupleNum, rhsPageSize, rhsPageNum, rhsTupleNum
 

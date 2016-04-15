@@ -168,16 +168,13 @@ class GreedyOptimizer(Optimizer):
     # Extract all joins in original plan, they serve as the set of joins actually necessary.
     joins = set(plan.joinBeforeUnion)
 
-    # Define the dynamic programming table.
-    optimal_plans = {}
-
     baseRelations = list(baseRelations)
     while len(baseRelations) > 1:
-      candidate_joins = set()
+      candidateJoins = set()
       for i in range(0, len(baseRelations) - 1):
-        candidate_joins.add((baseRelations[i], baseRelations[i+1]))
-        candidate_joins.add((baseRelations[i+1], baseRelations[i]))
-      optimal_plan = self.get_best_join(candidate_joins, joins)
+        candidateJoins.add((baseRelations[i], baseRelations[i+1]))
+        candidateJoins.add((baseRelations[i+1], baseRelations[i]))
+      optimal_plan = self.findBestJoin(candidateJoins, joins)
       baseRelations.append(optimal_plan)
       baseRelations.remove(optimal_plan.rhsPlan)
       baseRelations.remove(optimal_plan.lhsPlan)
@@ -189,23 +186,23 @@ class GreedyOptimizer(Optimizer):
     return newPlan
 
 
-  def get_best_join(self, candidates, required_joins):
+  def findBestJoin(self, candidates, joins):
     best_plan_cost = None
     best_plan = None
     for left, right in candidates:
 
-      relevant_expr = None
+      relevantExpr = None
 
       # Find the joinExpr corresponding to the current join candidate. If there is none, it's a
       # cartesian product.
-      for join in required_joins:
-        names = ExpressionInfo(join.joinExpr).getAttributes()
+      for join in joins:
+        attrs = ExpressionInfo(join.joinExpr).getAttributes()
         # if set(join.rhsSchema.fields).intersection(names) and set(join.lhsSchema.fields).intersection(names):
-        if set(right.schema().fields).intersection(names) and set(left.schema().fields).intersection(names):
-          relevant_expr = join.joinExpr
+        if set(right.schema().fields).intersection(attrs) and set(left.schema().fields).intersection(attrs):
+          relevantExpr = join.joinExpr
           break
         else:
-          relevant_expr = 'True'
+          relevantExpr = 'True'
 
       #According to the performance result in assignment 2, we use hash join here.
       #We don't use index-join because we don't necessarily have index for the join.
@@ -213,10 +210,10 @@ class GreedyOptimizer(Optimizer):
       for algorithm in ["nested-loops", "block-nested-loops"]:
         if algorithm == "hash":
           # Hash join cannot handle cartesian product?
-          if relevant_expr == 'True':
+          if relevantExpr == 'True':
             continue
 
-          names = ExpressionInfo(relevant_expr).getAttributes()
+          names = ExpressionInfo(relevantExpr).getAttributes()
           key1 = set(left.schema().fields).intersection(names).pop()
           key2 = set(right.schema().fields).intersection(names).pop()
 
@@ -234,7 +231,7 @@ class GreedyOptimizer(Optimizer):
             print ("Key Schema Error\n")
             exit(0)
 
-          test_plan = Plan(root = Join(
+          testPlan = Plan(root = Join(
             lhsPlan = left,
             rhsPlan = right,
             method = 'hash',
@@ -242,22 +239,22 @@ class GreedyOptimizer(Optimizer):
             rhsHashFn= 'hash(' + key2 + ') % 4', rhsKeySchema=keySchema2
           ))
         else:
-          test_plan = Plan(root = Join(
+          testPlan = Plan(root = Join(
             lhsPlan = left,
             rhsPlan = right,
             method = algorithm,
-            expr = relevant_expr
+            expr = relevantExpr
           ))
 
         # Prepare and run the plan in sampling mode, and get the estimated cost.
-        test_plan.prepare(self.db)
-        test_plan.sample(1.0)
-        cost = test_plan.cost(estimated = True)
+        testPlan.prepare(self.db)
+        testPlan.sample(1.0)
+        cost = testPlan.cost(estimated = True)
 
         # Update running best.
         if best_plan_cost is None or cost < best_plan_cost:
           best_plan_cost = cost
-          best_plan = test_plan
+          best_plan = testPlan
 
     # Need to return the root operator rather than the plan itself, since it's going back into the
     # table.
