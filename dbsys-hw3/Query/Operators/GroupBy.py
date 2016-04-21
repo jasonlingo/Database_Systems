@@ -176,6 +176,5 @@ class GroupBy(Operator):
     Thus, we go through all tuples again. So the cost of group by will be 2 * estimated number of tuples.
     We will add the group by cost to the original cost function.
     """
-    partCost = self.subPlan.cardinality(estimated) * 2 # FIXME
-    # partCost = 0
+    partCost = self.subPlan.cardinality(estimated) * 2
     return super().cost(estimated) + partCost
