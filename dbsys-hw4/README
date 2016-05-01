@@ -1,0 +1,3471 @@
+Team members:
+Jinyi Guo
+Li-Yi Lin
+
+
+Exercise 1:
+===================================================================================================
+
+Query 18:
+
+Original query:
+
+SELECT
+ c_name,
+ c_custkey,
+ o_orderkey,
+ o_orderdate,
+ o_totalprice,
+ sum(l_quantity)
+FROM
+ customer,
+ orders,
+ lineitem
+WHERE
+  o_orderkey in (
+   SELECT
+           l_orderkey
+   FROM
+           lineitem
+   GROUP BY
+           l_orderkey having sum(l_quantity) > 300
+  )
+  and c_custkey = o_custkey
+  and o_orderkey = l_orderkey
+GROUP BY
+ c_name,
+ c_custkey,
+ o_orderkey,
+ o_orderdate,
+ o_totalprice;
+
+Discussion:
+    The FILTER is executed first to reduce the number of rows to be joined. Then one of the two join clauses ("o_orderkey = l_orderkey") are partially executed first using "HASH JOIN RIGHT SEMI" in order to minimize the cost of next join clause. Finally the rest of "o_orderkey = l_orderkey" is executed to complete the query. This is one of the feature of oracle database.
+
+
+
+1st:
+
+Elapsed: 00:00:03.51
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 452456892
+
+-------------------------------------------------------------------------------------
+
+| Id  | Operation                | Name | Rows | Bytes | Cost (%CPU)| Time    |
+
+-------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT         |      |    4 |  256 | 66687   (1)| 00:00:03 |
+
+|   1 |  HASH GROUP BY           |      |    4 |  256 | 66687   (1)| 00:00:03 |
+
+|*  2 |   HASH JOIN              |      |    4 |  256 | 66686   (1)| 00:00:03 |
+
+|*  3 |    HASH JOIN             |      |    1 |   55 | 37184   (1)| 00:00:02 |
+
+|*  4 |     HASH JOIN RIGHT SEMI |      |    1 |   31 | 36250   (1)| 00:00:02 |
+
+|   5 |      VIEW                | VW_NSO_1 |    1 |    6 | 29707   (2)| 00:00:02 |
+
+|*  6 |       FILTER             |      |      |      |     |    |
+
+|   7 |        HASH GROUP BY     |      |    1 |    9 | 29707   (2)| 00:00:02 |
+
+|   8 |   TABLE ACCESS FULL      | LINEITEM |  6001K|   51M| 29480   (1)| 00:00:02 |
+
+|   9 |      TABLE ACCESS FULL   | ORDERS   |  1500K|   35M|  6538   (1)| 00:00:01 |
+
+|  10 |     TABLE ACCESS FULL    | CUSTOMER |  150K|  3515K|  933   (1)| 00:00:01 |
+
+|  11 |    TABLE ACCESS FULL     | LINEITEM |  6001K|   51M| 29480   (1)| 00:00:02 |
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("O_ORDERKEY"="L_ORDERKEY")
+   3 - access("C_CUSTKEY"="O_CUSTKEY")
+   4 - access("O_ORDERKEY"="L_ORDERKEY")
+   6 - filter(SUM("L_QUANTITY")>300)
+    
+
+
+2nd:
+
+Elapsed: 00:00:03.48
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 452456892
+
+--------------------------------------------------------------------------------
+-----
+
+| Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time
+    |
+
+--------------------------------------------------------------------------------
+-----
+
+|   0 | SELECT STATEMENT   |      |    4 |  256 | 66687   (1)| 00:00:03 |
+
+|   1 |  HASH GROUP BY     |      |    4 |  256 | 66687   (1)| 00:00:03 |
+
+|*  2 |   HASH JOIN     |      |    4 |  256 | 66686   (1)| 00:00:03 |
+
+|*  3 |    HASH JOIN     |      |    1 |   55 | 37184   (1)| 00:00:02 |
+
+|*  4 |     HASH JOIN RIGHT SEMI |      |    1 |   31 | 36250   (1)| 00:00:02 |
+
+|   5 |      VIEW     | VW_NSO_1 |    1 |    6 | 29707   (2)| 00:00:02 |
+
+|*  6 |       FILTER     |      |      |      |     |    |
+
+|   7 |        HASH GROUP BY   |      |    1 |    9 | 29707   (2)| 00:00:02 |
+
+|   8 |   TABLE ACCESS FULL| LINEITEM |  6001K|   51M| 29480   (1)| 00:00:02 |
+
+|   9 |      TABLE ACCESS FULL   | ORDERS   |  1500K|   35M|  6538   (1)| 00:00:01 
+
+|  10 |     TABLE ACCESS FULL   | CUSTOMER |  150K|  3515K|  933   (1)| 00:00:01 |
+
+|  11 |    TABLE ACCESS FULL   | LINEITEM |  6001K|   51M| 29480   (1)| 00:00:02 |
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("O_ORDERKEY"="L_ORDERKEY")
+   3 - access("C_CUSTKEY"="O_CUSTKEY")
+   4 - access("O_ORDERKEY"="L_ORDERKEY")
+   6 - filter(SUM("L_QUANTITY")>300)
+
+
+3rd:
+
+Elapsed: 00:00:03.51
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 452456892
+
+--------------------------------------------------------------------------------
+-----
+
+| Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time
+    |
+
+--------------------------------------------------------------------------------
+-----
+
+|   0 | SELECT STATEMENT   |      |    4 |  256 | 66687   (1)| 00:00:03 |
+
+|   1 |  HASH GROUP BY     |      |    4 |  256 | 66687   (1)| 00:00:03 |
+
+|*  2 |   HASH JOIN     |      |    4 |  256 | 66686   (1)| 00:00:03 |
+
+|*  3 |    HASH JOIN     |      |    1 |   55 | 37184   (1)| 00:00:02 |
+
+|*  4 |     HASH JOIN RIGHT SEMI |      |    1 |   31 | 36250   (1)| 00:00:02 |
+
+|   5 |      VIEW     | VW_NSO_1 |    1 |    6 | 29707   (2)| 00:00:02 |
+
+|*  6 |       FILTER     |      |      |      |     |    |
+
+|   7 |        HASH GROUP BY   |      |    1 |    9 | 29707   (2)| 00:00:02 |
+
+|   8 |   TABLE ACCESS FULL| LINEITEM |  6001K|   51M| 29480   (1)| 00:00:02 |
+
+|   9 |      TABLE ACCESS FULL   | ORDERS   |  1500K|   35M|  6538   (1)| 00:00:01 |
+
+|  10 |     TABLE ACCESS FULL   | CUSTOMER |  150K|  3515K|  933   (1)| 00:00:01 |
+
+|  11 |    TABLE ACCESS FULL   | LINEITEM |  6001K|   51M| 29480   (1)| 00:00:02 |
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("O_ORDERKEY"="L_ORDERKEY")
+   3 - access("C_CUSTKEY"="O_CUSTKEY")
+   4 - access("O_ORDERKEY"="L_ORDERKEY")
+   6 - filter(SUM("L_QUANTITY")>300)
+
+4th:
+
+Elapsed: 00:00:03.45
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 452456892
+
+--------------------------------------------------------------------------------
+-----
+
+| Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time
+    |
+
+--------------------------------------------------------------------------------
+-----
+
+|   0 | SELECT STATEMENT   |      |    4 |  256 | 66687   (1)| 00:00:03 |
+
+|   1 |  HASH GROUP BY     |      |    4 |  256 | 66687   (1)| 00:00:03 |
+
+|*  2 |   HASH JOIN     |      |    4 |  256 | 66686   (1)| 00:00:03 |
+
+|*  3 |    HASH JOIN     |      |    1 |   55 | 37184   (1)| 00:00:02 |
+
+|*  4 |     HASH JOIN RIGHT SEMI |      |    1 |   31 | 36250   (1)| 00:00:02 |
+
+|   5 |      VIEW     | VW_NSO_1 |    1 |    6 | 29707   (2)| 00:00:02 |
+
+|*  6 |       FILTER     |      |      |      |     |    |
+
+|   7 |        HASH GROUP BY   |      |    1 |    9 | 29707   (2)| 00:00:02 |
+
+|   8 |   TABLE ACCESS FULL| LINEITEM |  6001K|   51M| 29480   (1)| 00:00:02 |
+
+|   9 |      TABLE ACCESS FULL   | ORDERS   |  1500K|   35M|  6538   (1)| 00:00:01 |
+
+|  10 |     TABLE ACCESS FULL   | CUSTOMER |  150K|  3515K|  933   (1)| 00:00:01 |
+
+|  11 |    TABLE ACCESS FULL   | LINEITEM |  6001K|   51M| 29480   (1)| 00:00:02 |
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("O_ORDERKEY"="L_ORDERKEY")
+   3 - access("C_CUSTKEY"="O_CUSTKEY")
+   4 - access("O_ORDERKEY"="L_ORDERKEY")
+   6 - filter(SUM("L_QUANTITY")>300)
+
+
+5th:
+
+Elapsed: 00:00:03.43
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 452456892
+
+--------------------------------------------------------------------------------
+-----
+
+| Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time
+    |
+
+--------------------------------------------------------------------------------
+-----
+
+|   0 | SELECT STATEMENT   |      |    4 |  256 | 66687   (1)| 00:00:03 |
+
+|   1 |  HASH GROUP BY     |      |    4 |  256 | 66687   (1)| 00:00:03 |
+
+|*  2 |   HASH JOIN     |      |    4 |  256 | 66686   (1)| 00:00:03 |
+
+|*  3 |    HASH JOIN     |      |    1 |   55 | 37184   (1)| 00:00:02 |
+
+|*  4 |     HASH JOIN RIGHT SEMI |      |    1 |   31 | 36250   (1)| 00:00:02 |
+
+|   5 |      VIEW     | VW_NSO_1 |    1 |    6 | 29707   (2)| 00:00:02 |
+
+|*  6 |       FILTER     |      |      |      |     |    |
+
+|   7 |        HASH GROUP BY   |      |    1 |    9 | 29707   (2)| 00:00:02 |
+
+|   8 |   TABLE ACCESS FULL| LINEITEM |  6001K|   51M| 29480   (1)| 00:00:02 |
+
+|   9 |      TABLE ACCESS FULL   | ORDERS   |  1500K|   35M|  6538   (1)| 00:00:01 |
+
+|  10 |     TABLE ACCESS FULL   | CUSTOMER |  150K|  3515K|  933   (1)| 00:00:01 |
+
+|  11 |    TABLE ACCESS FULL   | LINEITEM |  6001K|   51M| 29480   (1)| 00:00:02 |
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("O_ORDERKEY"="L_ORDERKEY")
+   3 - access("C_CUSTKEY"="O_CUSTKEY")
+   4 - access("O_ORDERKEY"="L_ORDERKEY")
+   6 - filter(SUM("L_QUANTITY")>300)
+
+
+Query 1:
+
+Original query:
+
+set termout on;
+set autotrace traceonly;
+set timing on;
+
+SELECT
+ l_returnflag,
+ l_linestatus,
+ SUM(l_quantity) AS sum_qty,
+ SUM(l_extendedprice) AS sum_base_price,
+ SUM(l_extendedprice * (1 - l_discount)) AS sum_disc_price,
+ SUM(l_extendedprice * (1 - l_discount) * (1 + l_tax)) AS sum_charge,
+ AVG(l_quantity) AS avg_qty,
+ AVG(l_extendedprice) AS avg_price,
+ AVG(l_discount) AS avg_disc,
+ COUNT(*) AS count_order
+FROM lineitem
+WHERE l_shipdate <= DATE '1998-09-02'
+GROUP BY l_returnflag, l_linestatus;
+
+quit;
+
+
+Discussion:
+
+This is a query with a single filter predicate and one single group by, and only involves one table. The filter is executed as the predicate of the first full table access, making the incoming group by and select clause cost less.
+
+
+SELECT 
+/*+INDEX(lineitem lineitem_returnflag,lineitem_linestatus,lineitem_quantity)*/ 
+
+1st:
+
+Elapsed: 00:00:04.64
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1773397105
+
+-------------------------------------------------------------------------------
+| Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |        |     5 |   135 | 29736  (2)| 00:00:02 |
+|   1 |  HASH GROUP BY     |        |     5 |   135 | 29736  (2)| 00:00:02 |
+|*  2 |   TABLE ACCESS FULL| LINEITEM |  5789K|   149M| 29518  (1)| 00:00:02 |
+-------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00',
+          'syyyy-mm-dd hh24:mi:ss'))
+
+
+2nd:
+
+Elapsed: 00:00:04.87
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1773397105
+
+-------------------------------------------------------------------------------
+| Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |        |     5 |   135 | 29736  (2)| 00:00:02 |
+|   1 |  HASH GROUP BY     |        |     5 |   135 | 29736  (2)| 00:00:02 |
+|*  2 |   TABLE ACCESS FULL| LINEITEM |  5789K|   149M| 29518  (1)| 00:00:02 |
+-------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00',
+          'syyyy-mm-dd hh24:mi:ss'))
+
+
+3rd:
+
+Elapsed: 00:00:04.77
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1773397105
+
+-------------------------------------------------------------------------------
+| Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |        |     5 |   135 | 29736  (2)| 00:00:02 |
+|   1 |  HASH GROUP BY     |        |     5 |   135 | 29736  (2)| 00:00:02 |
+|*  2 |   TABLE ACCESS FULL| LINEITEM |  5789K|   149M| 29518  (1)| 00:00:02 |
+-------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00',
+          'syyyy-mm-dd hh24:mi:ss'))
+
+
+4th:
+
+Elapsed: 00:00:04.83
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1773397105
+
+-------------------------------------------------------------------------------
+| Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |        |     5 |   135 | 29736  (2)| 00:00:02 |
+|   1 |  HASH GROUP BY     |        |     5 |   135 | 29736  (2)| 00:00:02 |
+|*  2 |   TABLE ACCESS FULL| LINEITEM |  5789K|   149M| 29518  (1)| 00:00:02 |
+-------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00',
+          'syyyy-mm-dd hh24:mi:ss'))
+
+
+5th:
+
+Elapsed: 00:00:05.13
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1773397105
+
+-------------------------------------------------------------------------------
+| Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |        |     5 |   135 | 29736  (2)| 00:00:02 |
+|   1 |  HASH GROUP BY     |        |     5 |   135 | 29736  (2)| 00:00:02 |
+|*  2 |   TABLE ACCESS FULL| LINEITEM |  5789K|   149M| 29518  (1)| 00:00:02 |
+-------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00',
+          'syyyy-mm-dd hh24:mi:ss'))
+
+
+
+Query 22:
+
+Original query:
+
+set termout on;
+set autotrace traceonly;
+set timing on;
+
+SELECT
+ cntrycode,
+ COUNT(*) AS numcust,
+ SUM(c_acctbal) AS totacctbal
+FROM (
+ SELECT
+  substr(c_phone, 1, 2) AS cntrycode,
+  c_acctbal
+ FROM customer
+ WHERE substr(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17')
+  AND c_acctbal > (
+   SELECT avg(c_acctbal)
+   FROM customer
+   WHERE c_acctbal > 0.00
+    AND substr(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17')
+  )
+  AND NOT EXISTS (
+   SELECT *
+   FROM orders
+   WHERE o_custkey = c_custkey
+  )
+)
+GROUP BY cntrycode;
+
+quit;
+
+Discussion:
+    This is the fastest query among the five. The two SELECT clauses inside the "WHERE" clause are executed first and then the outer select. There is also a "SORT AGGREGATE" operation between the inner and outer "SELECT" (with filter) on "CUSTOMER" table to speed up the outer filter predicate, which are all simple numeric condition. "GROUP BY" is executed at last (one step before the final select) because the number of entries is already minimized.
+
+
+1st:
+
+Elapsed: 00:00:00.46
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1384268742
+
+----------------------------------------------------------------------------------
+
+| Id  | Operation             | Name   | Rows  | Bytes | Cost (%CPU)| Time |
+
+----------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT      |        |     1 |    32 |  8414   (1)| 00:00:01 |
+
+|   1 |  HASH GROUP BY        |        |     1 |    32 |  8414   (1)| 00:00:01 |
+
+|*  2 |   HASH JOIN ANTI      |        |     5 |   160 |  7474   (1)| 00:00:01 |
+
+|*  3 |    TABLE ACCESS FULL  | CUSTOMER |   510 | 13770 |   934   (1)| 00:00:01 |
+
+|   4 |     SORT AGGREGATE    |        |     1 |    22 |        |              | 
+
+|*  5 |      TABLE ACCESS FULL| CUSTOMER |  9264 |   199K|   939   (1)| 00:00:01 |
+
+|   6 |    TABLE ACCESS FULL  | ORDERS   |  1500K|  7324K|  6535   (1)| 00:00:01 |
+
+----------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("O_CUSTKEY"="C_CUSTKEY")
+   3 - filter((SUBSTR("C_PHONE",1,2)='13' OR SUBSTR("C_PHONE",1,2)='31'
+          OR SUBSTR("C_PHONE",1,2)='23' OR SUBSTR("C_PHONE",1,2)='29' OR
+          SUBSTR("C_PHONE",1,2)='30' OR SUBSTR("C_PHONE",1,2)='18' OR
+          SUBSTR("C_PHONE",1,2)='17') AND "C_ACCTBAL"> (SELECT AVG("C_ACCTBAL")
+
+          FROM "CUSTOMER" "CUSTOMER" WHERE "C_ACCTBAL">0.00 AND
+          (SUBSTR("C_PHONE",1,2)='13' OR SUBSTR("C_PHONE",1,2)='31' OR
+          SUBSTR("C_PHONE",1,2)='23' OR SUBSTR("C_PHONE",1,2)='29' OR
+          SUBSTR("C_PHONE",1,2)='30' OR SUBSTR("C_PHONE",1,2)='18' OR
+          SUBSTR("C_PHONE",1,2)='17')))
+   5 - filter("C_ACCTBAL">0.00 AND (SUBSTR("C_PHONE",1,2)='13' OR
+          SUBSTR("C_PHONE",1,2)='31' OR SUBSTR("C_PHONE",1,2)='23' OR
+          SUBSTR("C_PHONE",1,2)='29' OR SUBSTR("C_PHONE",1,2)='30' OR
+          SUBSTR("C_PHONE",1,2)='18' OR SUBSTR("C_PHONE",1,2)='17'))
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=2)
+   - 1 Sql Plan Directive used for this statement
+
+
+
+2nd:
+
+Elapsed: 00:00:00.45
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1384268742
+
+----------------------------------------------------------------------------------
+
+| Id  | Operation        | Name   | Rows  | Bytes | Cost (%CPU)| Time |
+
+----------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT      |    |     1 |    32 |  8414   (1)| 00:00:01 |
+
+|   1 |  HASH GROUP BY        |    |     1 |    32 |  8414   (1)| 00:00:01 |
+
+|*  2 |   HASH JOIN ANTI      |    |     5 |   160 |  7474   (1)| 00:00:01 |
+
+|*  3 |    TABLE ACCESS FULL  | CUSTOMER |   510 | 13770 |   934   (1)| 00:00:01 |
+
+|   4 |     SORT AGGREGATE    |    |     1 |    22 |        | |
+
+|*  5 |      TABLE ACCESS FULL| CUSTOMER |  9264 |   199K|   939   (1)| 00:00:01 |
+
+|   6 |    TABLE ACCESS FULL  | ORDERS   |  1500K|  7324K|  6535   (1)| 00:00:01 |
+
+----------------------------------------------------------------------------------
+
+
+3rd:
+
+Elapsed: 00:00:00.39
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1384268742
+
+----------------------------------------------------------------------------------
+
+| Id  | Operation        | Name   | Rows  | Bytes | Cost (%CPU)| Time |
+
+----------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT      |    |     1 |    32 |  8414   (1)| 00:00:01 |
+
+|   1 |  HASH GROUP BY        |    |     1 |    32 |  8414   (1)| 00:00:01 |
+
+|*  2 |   HASH JOIN ANTI      |    |     5 |   160 |  7474   (1)| 00:00:01 |
+
+|*  3 |    TABLE ACCESS FULL  | CUSTOMER |   510 | 13770 |   934   (1)| 00:00:01 |
+
+|   4 |     SORT AGGREGATE    |    |     1 |    22 |        | |
+
+|*  5 |      TABLE ACCESS FULL| CUSTOMER |  9264 |   199K|   939   (1)| 00:00:01 |
+
+|   6 |    TABLE ACCESS FULL  | ORDERS   |  1500K|  7324K|  6535   (1)| 00:00:01 |
+
+----------------------------------------------------------------------------------
+
+4th:
+
+
+Elapsed: 00:00:00.45
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1384268742
+
+----------------------------------------------------------------------------------
+
+| Id  | Operation        | Name   | Rows  | Bytes | Cost (%CPU)| Time |
+
+----------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT      |    |     1 |    32 |  8414   (1)| 00:00:01 |
+
+|   1 |  HASH GROUP BY        |    |     1 |    32 |  8414   (1)| 00:00:01 |
+
+|*  2 |   HASH JOIN ANTI      |    |     5 |   160 |  7474   (1)| 00:00:01 |
+
+|*  3 |    TABLE ACCESS FULL  | CUSTOMER |   510 | 13770 |   934   (1)| 00:00:01 |
+
+|   4 |     SORT AGGREGATE    |    |     1 |    22 |        | |
+
+|*  5 |      TABLE ACCESS FULL| CUSTOMER |  9264 |   199K|   939   (1)| 00:00:01 |
+
+|   6 |    TABLE ACCESS FULL  | ORDERS   |  1500K|  7324K|  6535   (1)| 00:00:01 |
+
+----------------------------------------------------------------------------------
+
+
+5th:
+
+Elapsed: 00:00:00.39
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1384268742
+
+----------------------------------------------------------------------------------
+
+| Id  | Operation        | Name   | Rows  | Bytes | Cost (%CPU)| Time |
+
+----------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT      |    |     1 |    32 |  8414   (1)| 00:00:01 |
+
+|   1 |  HASH GROUP BY        |    |     1 |    32 |  8414   (1)| 00:00:01 |
+
+|*  2 |   HASH JOIN ANTI      |    |     5 |   160 |  7474   (1)| 00:00:01 |
+
+|*  3 |    TABLE ACCESS FULL  | CUSTOMER |   510 | 13770 |   934   (1)| 00:00:01 |
+
+|   4 |     SORT AGGREGATE    |    |     1 |    22 |        | |
+
+|*  5 |      TABLE ACCESS FULL| CUSTOMER |  9264 |   199K|   939   (1)| 00:00:01 |
+
+|   6 |    TABLE ACCESS FULL  | ORDERS   |  1500K|  7324K|  6535   (1)| 00:00:01 |
+
+----------------------------------------------------------------------------------
+
+
+Query 3:
+
+SELECT 
+ l_orderkey,
+ sum(l_extendedprice * (1 - l_discount)) AS revenue,
+ o_orderdate,
+ o_shippriority
+FROM customer, orders, lineitem
+WHERE c_mktsegment = 'BUILDING'
+ AND c_custkey = o_custkey
+ AND l_orderkey = o_orderkey
+ AND o_orderdate < DATE '1995-03-15'
+ AND l_shipdate > DATE '1995-03-15'
+GROUP BY l_orderkey, o_orderdate, o_shippriority;
+
+
+Discussion:
+  This query plan puts the select operators in the table accesses so that the sizes of data rows were reduced. It also used hash join to join a big table with the smallest table to further reduce the data size for it to join the biggest table (LINEITEM) later. Thus, this query plan doesn't need any improvement under the initial database setting.
+
+
+
+1st 
+Elapsed: 00:00:01.89
+
+| Id  | Operation            | Name     | Rows  | Bytes |TempSpc| Cost (%CPU)|     Time |
+
+-----------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT     |          |   495K|    28M|       | 49991   (1)| 00:00:02 |
+
+|   1 |  HASH GROUP BY       |          |   495K|    28M|    34M| 49991   (1)| 00:00:02 |
+
+|*  2 |   HASH JOIN          |          |   495K|    28M|    10M| 42863   (1)| 00:00:02 |
+
+|*  3 |    HASH JOIN         |          |   217K|  7847K|       |  7480   (1)| 00:00:01 |
+
+|*  4 |     TABLE ACCESS FULL| CUSTOMER | 30000 |   468K|       |   935   (1)| 00:00:01 |
+
+|*  5 |     TABLE ACCESS FULL| ORDERS   |   729K|    14M|       |  6543   (1)| 00:00:01 |
+
+|*  6 |    TABLE ACCESS FULL | LINEITEM |  3225K|    70M|       | 29518   (1)| 00:00:02 |
+
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("L_ORDERKEY"="O_ORDERKEY")
+   3 - access("C_CUSTKEY"="O_CUSTKEY")
+   4 - filter("C_MKTSEGMENT"='BUILDING')
+   5 - filter("O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss'))
+   6 - filter("L_SHIPDATE">TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss'))
+
+
+2nd
+Elapsed: 00:00:02.17
+
+| Id  | Operation            | Name     | Rows  | Bytes |TempSpc| Cost (%CPU)|    Time  |
+-----------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT     |          |   495K|    28M|       | 49991   (1)| 00:00:02 |
+
+|   1 |  HASH GROUP BY       |          |   495K|    28M|    34M| 49991   (1)| 00:00:02 |
+
+|*  2 |   HASH JOIN          |          |   495K|    28M|    10M| 42863   (1)| 00:00:02 |
+
+|*  3 |    HASH JOIN         |          |   217K|  7847K|       |  7480   (1)| 00:00:01 |
+
+|*  4 |     TABLE ACCESS FULL| CUSTOMER | 30000 |   468K|       |   935   (1)| 00:00:01 |
+
+|*  5 |     TABLE ACCESS FULL| ORDERS   |   729K|    14M|       |  6543   (1)| 00:00:01 |
+
+|*  6 |    TABLE ACCESS FULL | LINEITEM |  3225K|    70M|       | 29518   (1)| 00:00:02 |
+
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("L_ORDERKEY"="O_ORDERKEY")
+   3 - access("C_CUSTKEY"="O_CUSTKEY")
+   4 - filter("C_MKTSEGMENT"='BUILDING')
+   5 - filter("O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss'))
+   6 - filter("L_SHIPDATE">TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss'))
+
+
+3rd
+Elapsed: 00:00:01.89
+
+| Id  | Operation            | Name     | Rows  | Bytes |TempSpc| Cost (%CPU)| Time     |
+
+-----------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT     |          |   495K|    28M|       | 49991   (1)| 00:00:02 |
+
+|   1 |  HASH GROUP BY       |          |   495K|    28M|    34M| 49991   (1)| 00:00:02 |
+
+|*  2 |   HASH JOIN          |          |   495K|    28M|    10M| 42863   (1)| 00:00:02 |
+
+|*  3 |    HASH JOIN         |          |   217K|  7847K|       |  7480   (1)| 00:00:01 |
+
+|*  4 |     TABLE ACCESS FULL| CUSTOMER | 30000 |   468K|       |   935   (1)| 00:00:01 |
+
+|*  5 |     TABLE ACCESS FULL| ORDERS   |   729K|    14M|       |  6543   (1)| 00:00:01 |
+
+|*  6 |    TABLE ACCESS FULL | LINEITEM |  3225K|    70M|       | 29518   (1)| 00:00:02 |
+
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("L_ORDERKEY"="O_ORDERKEY")
+   3 - access("C_CUSTKEY"="O_CUSTKEY")
+   4 - filter("C_MKTSEGMENT"='BUILDING')
+   5 - filter("O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss'))
+   6 - filter("L_SHIPDATE">TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss'))
+
+
+4th
+Elapsed: 00:00:01.78
+
+| Id  | Operation            | Name     | Rows  | Bytes |TempSpc| Cost (%CPU)|    Time  |
+
+-----------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT     |          |   495K|    28M|       | 49991   (1)| 00:00:02 |
+
+|   1 |  HASH GROUP BY       |          |   495K|    28M|    34M| 49991   (1)| 00:00:02 |
+
+|*  2 |   HASH JOIN          |          |   495K|    28M|    10M| 42863   (1)| 00:00:02 |
+
+|*  3 |    HASH JOIN         |          |   217K|  7847K|       |  7480   (1)| 00:00:01 |
+
+|*  4 |     TABLE ACCESS FULL| CUSTOMER | 30000 |   468K|       |   935   (1)| 00:00:01 |
+
+|*  5 |     TABLE ACCESS FULL| ORDERS   |   729K|    14M|       |  6543   (1)| 00:00:01 |
+
+|*  6 |    TABLE ACCESS FULL | LINEITEM |  3225K|    70M|       | 29518   (1)| 00:00:02 |
+
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("L_ORDERKEY"="O_ORDERKEY")
+   3 - access("C_CUSTKEY"="O_CUSTKEY")
+   4 - filter("C_MKTSEGMENT"='BUILDING')
+   5 - filter("O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss'))
+   6 - filter("L_SHIPDATE">TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss'))
+
+
+5th
+Elapsed: 00:00:01.96
+
+| Id  | Operation            | Name     | Rows  | Bytes |TempSpc| Cost (%CPU)|    Time  |
+
+-----------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT     |          |   495K|    28M|       | 49991   (1)| 00:00:02 |
+
+|   1 |  HASH GROUP BY       |          |   495K|    28M|    34M| 49991   (1)| 00:00:02 |
+
+|*  2 |   HASH JOIN          |          |   495K|    28M|    10M| 42863   (1)| 00:00:02 |
+
+|*  3 |    HASH JOIN         |          |   217K|  7847K|       |  7480   (1)| 00:00:01 |
+
+|*  4 |     TABLE ACCESS FULL| CUSTOMER | 30000 |   468K|       |   935   (1)| 00:00:01 |
+
+|*  5 |     TABLE ACCESS FULL| ORDERS   |   729K|    14M|       |  6543   (1)| 00:00:01 |
+
+|*  6 |    TABLE ACCESS FULL | LINEITEM |  3225K|    70M|       | 29518   (1)| 00:00:02 |
+
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("L_ORDERKEY"="O_ORDERKEY")
+   3 - access("C_CUSTKEY"="O_CUSTKEY")
+   4 - filter("C_MKTSEGMENT"='BUILDING')
+   5 - filter("O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss'))
+   6 - filter("L_SHIPDATE">TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss'))
+        
+
+Query 5:
+
+SELECT 
+ n_name, 
+ sum(l_extendedprice * (1 - l_discount)) AS revenue
+FROM customer, orders, lineitem, supplier, nation, region
+WHERE c_custkey = o_custkey
+ AND l_orderkey = o_orderkey
+ AND l_suppkey = s_suppkey
+ AND c_nationkey = s_nationkey
+ AND s_nationkey = n_nationkey
+ AND n_regionkey = r_regionkey
+ AND r_name = 'ASIA'
+ AND o_orderdate >= DATE '1994-01-01'
+ AND o_orderdate < DATE '1995-01-01'
+GROUP BY n_name;
+
+
+Discussion:
+  This plan decided to use MERGE JOIN CARTESIAN to join SUPPLIER with REGION first instead of joining REGION with NATION. If it can join NATION with REGION first, maybe the data size can be further reduced.
+
+
+1st
+Elapsed: 00:00:02.51
+
+| Id  | Operation                         | Name      | Rows  | Bytes |TempSpc| Cost (%CPU)| Time  |
+
+-------------------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT                  |           |    25 |  2300 |       | 42752(1)| 00:00:02 |
+
+|   1 |  HASH GROUP BY                    |           |    25 |  2300 |       | 42752(1)| 00:00:02 |
+
+|*  2 |   HASH JOIN                       |           |  7410 |   665K|  2936K| 42751(1)| 00:00:02 |
+
+|   3 |    TABLE ACCESS FULL              | CUSTOMER  |   150K|  1171K|       |   933(1)| 00:00:01 |
+
+|*  4 |    HASH JOIN                      |           |   185K|    14M|  6912K| 40832(1)| 00:00:02 |
+
+|*  5 |     TABLE ACCESS FULL             | ORDERS    |   228K|  4235K|       |  6543(1)| 00:00:01 |
+
+|*  6 |     HASH JOIN                     |           |  1200K|    74M|       | 29575(1)| 00:00:02 |
+
+|   7 |      VIEW                         | VW_GBF_35 |  2000 | 92000 |       |    64(2)| 00:00:01 |
+
+|   8 |       HASH GROUP BY               |           |  2000 |   132K|       |    64(2)| 00:00:01 |
+
+|*  9 |        HASH JOIN                  |           |  2000 |   132K|       |    63(0)| 00:00:01 |
+
+|  10 |         TABLE ACCESS FULL         | NATION    |    25 |   800 |       |     2(0)| 00:00:01 |
+
+|  11 |         MERGE JOIN CARTESIAN      |           | 10000 |   351K|       |    61(0)| 00:00:01 |
+
+|* 12 |          TABLE ACCESS FULL        | REGION    |     1 |    29 |       |     2(0)| 00:00:01 |
+
+|  13 |          BUFFER SORT              |           | 10000 | 70000 |       |    59(0)| 00:00:01 |
+
+|  14 |           TABLE ACCESS FULL       | SUPPLIER  | 10000 | 70000 |       |    59(0)| 00:00:01 |
+
+|  15 |      TABLE ACCESS FULL            | LINEITEM  |  6001K|   108M|       | 29489(1)| 00:00:02 |
+
+-------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("C_CUSTKEY"="O_CUSTKEY" AND "C_NATIONKEY"="ITEM_1")
+   4 - access("L_ORDERKEY"="O_ORDERKEY")
+   5 - filter("O_ORDERDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+        AND "O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+   6 - access("L_SUPPKEY"="ITEM_2")
+   9 - access("N_REGIONKEY"="R_REGIONKEY" AND "S_NATIONKEY"="N_NATIONKEY")
+  12 - filter("R_NAME"='ASIA')
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=2)
+   - 2 Sql Plan Directives used for this statement
+   
+   
+2nd
+Elapsed: 00:00:02.28
+
+| Id  | Operation                         | Name      | Rows  | Bytes |TempSpc| Cost (%CPU)| Time  |
+
+-------------------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT                  |           |    25 |  2300 |       | 42752(1)| 00:00:02 |
+
+|   1 |  HASH GROUP BY                    |           |    25 |  2300 |       | 42752(1)| 00:00:02 |
+
+|*  2 |   HASH JOIN                       |           |  7410 |   665K|  2936K| 42751(1)| 00:00:02 |
+
+|   3 |    TABLE ACCESS FULL              | CUSTOMER  |   150K|  1171K|       |   933(1)| 00:00:01 |
+
+|*  4 |    HASH JOIN                      |           |   185K|    14M|  6912K| 40832(1)| 00:00:02 |
+
+|*  5 |     TABLE ACCESS FULL             | ORDERS    |   228K|  4235K|       |  6543(1)| 00:00:01 |
+
+|*  6 |     HASH JOIN                     |           |  1200K|    74M|       | 29575(1)| 00:00:02 |
+
+|   7 |      VIEW                         | VW_GBF_35 |  2000 | 92000 |       |    64(2)| 00:00:01 |
+
+|   8 |       HASH GROUP BY               |           |  2000 |   132K|       |    64(2)| 00:00:01 |
+
+|*  9 |        HASH JOIN                  |           |  2000 |   132K|       |    63(0)| 00:00:01 |
+
+|  10 |         TABLE ACCESS FULL         | NATION    |    25 |   800 |       |     2(0)| 00:00:01 |
+
+|  11 |         MERGE JOIN CARTESIAN      |           | 10000 |   351K|       |    61(0)| 00:00:01 |
+
+|* 12 |          TABLE ACCESS FULL        | REGION    |     1 |    29 |       |     2(0)| 00:00:01 |
+
+|  13 |          BUFFER SORT              |           | 10000 | 70000 |       |    59(0)| 00:00:01 |
+
+|  14 |           TABLE ACCESS FULL       | SUPPLIER  | 10000 | 70000 |       |    59(0)| 00:00:01 |
+
+|  15 |      TABLE ACCESS FULL            | LINEITEM  |  6001K|   108M|       | 29489(1)| 00:00:02 |
+
+-------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("C_CUSTKEY"="O_CUSTKEY" AND "C_NATIONKEY"="ITEM_1")
+   4 - access("L_ORDERKEY"="O_ORDERKEY")
+   5 - filter("O_ORDERDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+
+        AND "O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+   6 - access("L_SUPPKEY"="ITEM_2")
+   9 - access("N_REGIONKEY"="R_REGIONKEY" AND "S_NATIONKEY"="N_NATIONKEY")
+  12 - filter("R_NAME"='ASIA')
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=2)
+   - 2 Sql Plan Directives used for this statement
+   
+   
+3rd
+Elapsed: 00:00:02.62
+
+| Id  | Operation                         | Name      | Rows  | Bytes |TempSpc| Cost (%CPU)| Time  |
+
+-------------------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT                  |           |    25 |  2300 |       | 42752(1)| 00:00:02 |
+
+|   1 |  HASH GROUP BY                    |           |    25 |  2300 |       | 42752(1)| 00:00:02 |
+
+|*  2 |   HASH JOIN                       |           |  7410 |   665K|  2936K| 42751(1)| 00:00:02 |
+
+|   3 |    TABLE ACCESS FULL              | CUSTOMER  |   150K|  1171K|       |   933(1)| 00:00:01 |
+
+|*  4 |    HASH JOIN                      |           |   185K|    14M|  6912K| 40832(1)| 00:00:02 |
+
+|*  5 |     TABLE ACCESS FULL             | ORDERS    |   228K|  4235K|       |  6543(1)| 00:00:01 |
+
+|*  6 |     HASH JOIN                     |           |  1200K|    74M|       | 29575(1)| 00:00:02 |
+
+|   7 |      VIEW                         | VW_GBF_35 |  2000 | 92000 |       |    64(2)| 00:00:01 |
+
+|   8 |       HASH GROUP BY               |           |  2000 |   132K|       |    64(2)| 00:00:01 |
+
+|*  9 |        HASH JOIN                  |           |  2000 |   132K|       |    63(0)| 00:00:01 |
+
+|  10 |         TABLE ACCESS FULL         | NATION    |    25 |   800 |       |     2(0)| 00:00:01 |
+
+|  11 |         MERGE JOIN CARTESIAN      |           | 10000 |   351K|       |    61(0)| 00:00:01 |
+
+|* 12 |          TABLE ACCESS FULL        | REGION    |     1 |    29 |       |     2(0)| 00:00:01 |
+
+|  13 |          BUFFER SORT              |           | 10000 | 70000 |       |    59(0)| 00:00:01 |
+
+|  14 |           TABLE ACCESS FULL       | SUPPLIER  | 10000 | 70000 |       |    59(0)| 00:00:01 |
+
+|  15 |      TABLE ACCESS FULL            | LINEITEM  |  6001K|   108M|       | 29489(1)| 00:00:02 |
+
+-------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("C_CUSTKEY"="O_CUSTKEY" AND "C_NATIONKEY"="ITEM_1")
+   4 - access("L_ORDERKEY"="O_ORDERKEY")
+   5 - filter("O_ORDERDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+
+        AND "O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+   6 - access("L_SUPPKEY"="ITEM_2")
+   9 - access("N_REGIONKEY"="R_REGIONKEY" AND "S_NATIONKEY"="N_NATIONKEY")
+  12 - filter("R_NAME"='ASIA')
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=2)
+   - 2 Sql Plan Directives used for this statement
+   
+   
+4th
+Elapsed: 00:00:02.50
+
+| Id  | Operation                         | Name      | Rows  | Bytes |TempSpc| Cost (%CPU)| Time  |
+
+-------------------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT                  |           |    25 |  2300 |       | 42752(1)| 00:00:02 |
+
+|   1 |  HASH GROUP BY                    |           |    25 |  2300 |       | 42752(1)| 00:00:02 |
+
+|*  2 |   HASH JOIN                       |           |  7410 |   665K|  2936K| 42751(1)| 00:00:02 |
+
+|   3 |    TABLE ACCESS FULL              | CUSTOMER  |   150K|  1171K|       |   933(1)| 00:00:01 |
+
+|*  4 |    HASH JOIN                      |           |   185K|    14M|  6912K| 40832(1)| 00:00:02 |
+
+|*  5 |     TABLE ACCESS FULL             | ORDERS    |   228K|  4235K|       |  6543(1)| 00:00:01 |
+
+|*  6 |     HASH JOIN                     |           |  1200K|    74M|       | 29575(1)| 00:00:02 |
+
+|   7 |      VIEW                         | VW_GBF_35 |  2000 | 92000 |       |    64(2)| 00:00:01 |
+
+|   8 |       HASH GROUP BY               |           |  2000 |   132K|       |    64(2)| 00:00:01 |
+
+|*  9 |        HASH JOIN                  |           |  2000 |   132K|       |    63(0)| 00:00:01 |
+
+|  10 |         TABLE ACCESS FULL         | NATION    |    25 |   800 |       |     2(0)| 00:00:01 |
+
+|  11 |         MERGE JOIN CARTESIAN      |           | 10000 |   351K|       |    61(0)| 00:00:01 |
+
+|* 12 |          TABLE ACCESS FULL        | REGION    |     1 |    29 |       |     2(0)| 00:00:01 |
+
+|  13 |          BUFFER SORT              |           | 10000 | 70000 |       |    59(0)| 00:00:01 |
+
+|  14 |           TABLE ACCESS FULL       | SUPPLIER  | 10000 | 70000 |       |    59(0)| 00:00:01 |
+
+|  15 |      TABLE ACCESS FULL            | LINEITEM  |  6001K|   108M|       | 29489(1)| 00:00:02 |
+
+-------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("C_CUSTKEY"="O_CUSTKEY" AND "C_NATIONKEY"="ITEM_1")
+   4 - access("L_ORDERKEY"="O_ORDERKEY")
+   5 - filter("O_ORDERDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+
+        AND "O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+   6 - access("L_SUPPKEY"="ITEM_2")
+   9 - access("N_REGIONKEY"="R_REGIONKEY" AND "S_NATIONKEY"="N_NATIONKEY")
+  12 - filter("R_NAME"='ASIA')
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=2)
+   - 2 Sql Plan Directives used for this statement
+   
+   
+5th
+Elapsed: 00:00:02.53
+
+| Id  | Operation                         | Name      | Rows  | Bytes |TempSpc| Cost (%CPU)| Time  |
+
+-------------------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT                  |           |    25 |  2300 |       | 42752(1)| 00:00:02 |
+
+|   1 |  HASH GROUP BY                    |           |    25 |  2300 |       | 42752(1)| 00:00:02 |
+
+|*  2 |   HASH JOIN                       |           |  7410 |   665K|  2936K| 42751(1)| 00:00:02 |
+
+|   3 |    TABLE ACCESS FULL              | CUSTOMER  |   150K|  1171K|       |   933(1)| 00:00:01 |
+
+|*  4 |    HASH JOIN                      |           |   185K|    14M|  6912K| 40832(1)| 00:00:02 |
+
+|*  5 |     TABLE ACCESS FULL             | ORDERS    |   228K|  4235K|       |  6543(1)| 00:00:01 |
+
+|*  6 |     HASH JOIN                     |           |  1200K|    74M|       | 29575(1)| 00:00:02 |
+
+|   7 |      VIEW                         | VW_GBF_35 |  2000 | 92000 |       |    64(2)| 00:00:01 |
+
+|   8 |       HASH GROUP BY               |           |  2000 |   132K|       |    64(2)| 00:00:01 |
+
+|*  9 |        HASH JOIN                  |           |  2000 |   132K|       |    63(0)| 00:00:01 |
+
+|  10 |         TABLE ACCESS FULL         | NATION    |    25 |   800 |       |     2(0)| 00:00:01 |
+
+|  11 |         MERGE JOIN CARTESIAN      |           | 10000 |   351K|       |    61(0)| 00:00:01 |
+
+|* 12 |          TABLE ACCESS FULL        | REGION    |     1 |    29 |       |     2(0)| 00:00:01 |
+
+|  13 |          BUFFER SORT              |           | 10000 | 70000 |       |    59(0)| 00:00:01 |
+
+|  14 |           TABLE ACCESS FULL       | SUPPLIER  | 10000 | 70000 |       |    59(0)| 00:00:01 |
+
+|  15 |      TABLE ACCESS FULL            | LINEITEM  |  6001K|   108M|       | 29489(1)| 00:00:02 |
+
+-------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("C_CUSTKEY"="O_CUSTKEY" AND "C_NATIONKEY"="ITEM_1")
+   4 - access("L_ORDERKEY"="O_ORDERKEY")
+   5 - filter("O_ORDERDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+        AND "O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+   6 - access("L_SUPPKEY"="ITEM_2")
+   9 - access("N_REGIONKEY"="R_REGIONKEY" AND "S_NATIONKEY"="N_NATIONKEY")
+  12 - filter("R_NAME"='ASIA')
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=2)
+   - 2 Sql Plan Directives used for this statement
+   
+  
+  
+
+Query 6:
+
+SELECT 
+ sum(l_extendedprice * l_discount) as revenue
+FROM        
+ lineitem
+WHERE        
+ l_shipdate >= date '1994-01-01'
+ and l_shipdate < date '1995-01-01'
+ and l_discount between 0.06 - 0.01 and 0.06 + 0.01
+ and l_quantity < 24;
+
+Discussion:
+This query plan put all the select operations in the table access so that the data size was reduced. The plan doesn't need to be improved under the initial database setting.
+
+
+1st
+Elapsed: 00:00:00.94
+
+-------------------------------------------------------------------------------
+| Id  | Operation          | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |          |     1 |    20 | 29527  (1) | 00:00:02 |
+|   1 |  SORT AGGREGATE    |          |     1 |    20 |            |          |
+|*  2 |   TABLE ACCESS FULL| LINEITEM |   155K|  3044K| 29527  (1) | 00:00:02 |
+-------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("L_SHIPDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss') AND "L_QUANTITY"<24 AND "L_DISCOUNT">=.05 AND
+        "L_SHIPDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+
+        AND "L_DISCOUNT"<=.07)
+        
+        
+2nd
+Elapsed: 00:00:00.94
+
+-------------------------------------------------------------------------------
+| Id  | Operation          | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |          |     1 |    20 | 29527  (1) | 00:00:02 |
+|   1 |  SORT AGGREGATE    |          |     1 |    20 |            |          |
+|*  2 |   TABLE ACCESS FULL| LINEITEM |   155K|  3044K| 29527  (1) | 00:00:02 |
+-------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("L_SHIPDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss') AND "L_QUANTITY"<24 AND "L_DISCOUNT">=.05 AND
+        "L_SHIPDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+
+        AND "L_DISCOUNT"<=.07)
+        
+        
+3rd
+Elapsed: 00:00:00.93
+
+-------------------------------------------------------------------------------
+| Id  | Operation          | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |          |     1 |    20 | 29527  (1) | 00:00:02 |
+|   1 |  SORT AGGREGATE    |          |     1 |    20 |            |          |
+|*  2 |   TABLE ACCESS FULL| LINEITEM |   155K|  3044K| 29527  (1) | 00:00:02 |
+-------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("L_SHIPDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss') AND "L_QUANTITY"<24 AND "L_DISCOUNT">=.05 AND
+        "L_SHIPDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+
+        AND "L_DISCOUNT"<=.07)
+        
+4th
+Elapsed: 00:00:01.09
+
+-------------------------------------------------------------------------------
+| Id  | Operation          | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |          |     1 |    20 | 29527  (1) | 00:00:02 |
+|   1 |  SORT AGGREGATE    |          |     1 |    20 |            |          |
+|*  2 |   TABLE ACCESS FULL| LINEITEM |   155K|  3044K| 29527  (1) | 00:00:02 |
+-------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("L_SHIPDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss') AND "L_QUANTITY"<24 AND "L_DISCOUNT">=.05 AND
+        "L_SHIPDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+
+        AND "L_DISCOUNT"<=.07)
+        
+5th
+Elapsed: 00:00:00.94
+
+-------------------------------------------------------------------------------
+| Id  | Operation          | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |          |     1 |    20 | 29527  (1) | 00:00:02 |
+|   1 |  SORT AGGREGATE    |          |     1 |    20 |            |          |
+|*  2 |   TABLE ACCESS FULL| LINEITEM |   155K|  3044K| 29527  (1) | 00:00:02 |
+-------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("L_SHIPDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd
+        hh24:mi:ss') AND "L_QUANTITY"<24 AND "L_DISCOUNT">=.05 AND
+        "L_SHIPDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+
+        AND "L_DISCOUNT"<=.07)
+        
+        
+        
+Exercise 2:
+===================================================================================================
+
+Query 18:
+  - Compute Statistics
+  
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 452456892
+
+    -------------------------------------------------------------------------------------
+
+    | Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time    |
+
+    -------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT   |      |    4 |  220 | 66690   (1)| 00:00:03 |
+
+    |   1 |  HASH GROUP BY     |      |    4 |  220 | 66690   (1)| 00:00:03 |
+
+    |*  2 |   HASH JOIN        |      |    4 |  220 | 66689   (1)| 00:00:03 |
+
+    |*  3 |    HASH JOIN       |      |    1 |   48 | 37187   (1)| 00:00:02 |
+
+    |*  4 |     HASH JOIN RIGHT SEMI |      |    1 |   26 | 36254   (1)| 00:00:02 |
+
+    |   5 |      VIEW     | VW_NSO_1 |    1 |    5 | 29707   (2)| 00:00:02 |
+
+    |*  6 |       FILTER     |      |      |      |     |    |
+
+    |   7 |        HASH GROUP BY   |      |    1 |    7 | 29707   (2)| 00:00:02 |
+
+    |   8 |   TABLE ACCESS FULL| LINEITEM |  6001K|   40M| 29480   (1)| 00:00:02 |
+
+    |   9 |      TABLE ACCESS FULL   | ORDERS   |  1500K|   30M|  6541   (1)| 00:00:01 |
+
+    |  10 |     TABLE ACCESS FULL   | CUSTOMER |  150K|  3222K|  933   (1)| 00:00:01 |
+
+    |  11 |    TABLE ACCESS FULL   | LINEITEM |  6001K|   40M| 29480   (1)| 00:00:02 |
+
+    -------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - access("O_ORDERKEY"="L_ORDERKEY")
+       3 - access("C_CUSTKEY"="O_CUSTKEY")
+       4 - access("O_ORDERKEY"="L_ORDERKEY")
+       6 - filter(SUM("L_QUANTITY")>300)
+
+
+    Statistics
+    ----------------------------------------------------------
+        0  recursive calls
+        0  db block gets
+         244652  consistent gets
+        0  physical reads
+      284  redo size
+           4367  bytes sent via SQL*Net to client
+      584  bytes received via SQL*Net from client
+        5  SQL*Net roundtrips to/from client
+        0  sorts (memory)
+        0  sorts (disk)
+       57  rows processed
+       
+    Discussion: The plan remains unchanged, and the improvement is not obvious.  
+   
+   
+
+  - In-Memory Tables
+  
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 1875741663
+
+    ------------------------------------------------------------------------------------------------------
+
+    | Id  | Operation        | Name     | Rows  | Bytes |TempSpc| Cost (%CPU)| Time     |
+
+    ------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT      |       |  6755K|   734M|       | 57040   (2)| 00:00:03 |
+
+    |   1 |  HASH GROUP BY        |       |  6755K|   734M|       | 57040   (2)| 00:00:03 |
+
+    |*  2 |   HASH JOIN           |       |  6755K|   734M|   133M| 56783   (2)| 00:00:03 |
+
+    |*  3 |    HASH JOIN          |       |  1400K|   117M|  6256K| 36782   (2)| 00:00:02 |
+
+    |   4 |     TABLE ACCESS INMEMORY FULL    | CUSTOMER |   164K|  4328K|       |  38   (8)| 00:00:01 |
+
+    |*  5 |     HASH JOIN SEMI    |       |  1400K|    81M|    80M| 31594   (2)| 00:00:02 |
+
+    |   6 |      TABLE ACCESS INMEMORY FULL   | ORDERS   |  1400K|    64M|       | 289  (17)| 00:00:01 |
+
+    |   7 |      VIEW             | VW_NSO_1 |  6755K|    83M|       | 19288   (2)| 00:00:01 |
+
+    |*  8 |       FILTER          |       |       |       |       |    |       |
+
+    |   9 |        HASH GROUP BY      |       | 75000 |   167M|   233M| 19288   (2)| 00:00:01 |
+
+    |  10 |   TABLE ACCESS INMEMORY FULL| LINEITEM |  6755K|   167M|       |1184   (8)| 00:00:01 |
+
+    |  11 |    TABLE ACCESS INMEMORY FULL    | LINEITEM |  6755K|   167M|       |1184   (8)| 00:00:01 |
+
+    ------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - access("O_ORDERKEY"="L_ORDERKEY")
+       3 - access("C_CUSTKEY"="O_CUSTKEY")
+       5 - access("O_ORDERKEY"="L_ORDERKEY")
+       8 - filter(SUM("L_QUANTITY")>300)
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - 1 Sql Plan Directive used for this statement
+
+
+    Statistics
+    ----------------------------------------------------------
+        0  recursive calls
+        0  db block gets
+       12  consistent gets
+        0  physical reads
+        0  redo size
+           4367  bytes sent via SQL*Net to client
+      585  bytes received via SQL*Net from client
+        5  SQL*Net roundtrips to/from client
+        0  sorts (memory)
+        0  sorts (disk)
+       57  rows processed
+       
+    Discussion: All table accesses become "inmemory", and the order of each operation changed accordingly. Unlike no inmemory, table scan operaions are "mixed" with multiple join operations, but we witnessed apparent speed up.
+
+
+
+  - Parallelism
+  
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 2987854741
+
+    ------------------------------------------------------------------------------------------------------------------------------
+
+    | Id  | Operation          | Name  | Rows  | Bytes | Cost (%CPU)| Time  |    TQ  |IN-OUT| PQ Distrib |
+
+    ------------------------------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT        |    |    39M|  2860M| 18943  (3)| 00:00:01 |   |  |       |
+
+    |   1 |  PX COORDINATOR         |    |  |  |     |    |   |  |       |
+
+    |   2 |   PX SEND QC (RANDOM)        | :TQ10005  |    39M|  2860M| 18943  (3)| 00:00:01 |  Q1,05 | P->S | QC (RAND)  |
+
+    |   3 |    HASH GROUP BY        |    |    39M|  2860M| 18943  (3)| 00:00:01 |  Q1,05 | PCWP |       |
+
+    |   4 |     PX RECEIVE          |    |    39M|  2860M| 18943  (3)| 00:00:01 |  Q1,05 | PCWP |       |
+
+    |   5 |      PX SEND HASH        | :TQ10004  |    39M|  2860M| 18943  (3)| 00:00:01 |  Q1,04 | P->P | HASH       |
+
+    |   6 |       HASH GROUP BY        |    |    39M|  2860M| 18943  (3)| 00:00:01 |  Q1,04 | PCWP |       |
+
+    |   7 |        VIEW          | VM_NWVW_2 |    39M|  2860M| 18943  (3)| 00:00:01 |  Q1,04 | PCWP |       |
+
+    |*  8 |   FILTER          |    |  |  |     |    |  Q1,04 | PCWC |       |
+
+    |   9 |    HASH GROUP BY        |    |    39M|  6217M| 18943  (3)| 00:00:01 |  Q1,04 | PCWP |       |
+
+    |  10 |     PX RECEIVE        |    |    39M|  6217M| 18943  (3)| 00:00:01 |  Q1,04 | PCWP |       |
+
+    |  11 |      PX SEND HASH       | :TQ10003  |    39M|  6217M| 18943  (3)| 00:00:01 |  Q1,03 | P->P | HASH       |
+
+    |  12 |       HASH GROUP BY      |    |    39M|  6217M| 18943  (3)| 00:00:01 |  Q1,03 | PCWP |       |
+
+    |* 13 |        HASH JOIN        |    |    39M|  6217M| 18517  (1)| 00:00:01 |  Q1,03 | PCWP |       |
+
+    |  14 |         PX RECEIVE      |    |  8866K|   321M|  8188  (1)| 00:00:01 |  Q1,03 | PCWP |       |
+
+    |  15 |          PX SEND HASH      | :TQ10000  |  8866K|   321M|  8188  (1)| 00:00:01 |  Q1,00 | P->P | HASH       |
+
+    |  16 |     PX BLOCK ITERATOR   |    |  8866K|   321M|  8188  (1)| 00:00:01 |  Q1,00 | PCWC |       |
+
+    |  17 |      TABLE ACCESS FULL  | LINEITEM  |  8866K|   321M|  8188  (1)| 00:00:01 |  Q1,00 | PCWP |       |
+
+    |* 18 |         HASH JOIN       |    |  8866K|  1056M| 10277  (1)| 00:00:01 |  Q1,03 | PCWP |       |
+
+    |  19 |          PX RECEIVE      |    |  1965K|   185M|  2078  (1)| 00:00:01 |  Q1,03 | PCWP |       |
+
+    |  20 |     PX SEND HASH      | :TQ10001  |  1965K|   185M|  2078  (1)| 00:00:01 |  Q1,01 | P->P | HASH       |
+
+    |* 21 |      HASH JOIN      |    |  1965K|   185M|  2078  (1)| 00:00:01 |  Q1,01 | PCWP |       |
+
+    |  22 |       TABLE ACCESS FULL | CUSTOMER  |   280K|    10M|   259  (0)| 00:00:01 |  Q1,01 | PCWP |       |
+
+    |  23 |       PX BLOCK ITERATOR |    |  1965K|   112M|  1817  (1)| 00:00:01 |  Q1,01 | PCWC |       |
+
+    |  24 |        TABLE ACCESS FULL| ORDERS  |  1965K|   112M|  1817  (1)| 00:00:01 |  Q1,01 | PCWP |       |
+
+    |  25 |          PX RECEIVE      |    |  8866K|   219M|  8188  (1)| 00:00:01 |  Q1,03 | PCWP |       |
+
+    |  26 |     PX SEND HASH      | :TQ10002  |  8866K|   219M|  8188  (1)| 00:00:01 |  Q1,02 | P->P | HASH       |
+
+    |  27 |      PX BLOCK ITERATOR  |    |  8866K|   219M|  8188  (1)| 00:00:01 |  Q1,02 | PCWC |       |
+
+    |  28 |       TABLE ACCESS FULL | LINEITEM  |  8866K|   219M|  8188  (1)| 00:00:01 |  Q1,02 | PCWP |       |
+
+    ------------------------------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       8 - filter(SUM(SYS_OP_CSR(SYS_OP_MSR(SUM("L_QUANTITY")),0))>300)
+      13 - access("O_ORDERKEY"="L_ORDERKEY")
+      18 - access("O_ORDERKEY"="L_ORDERKEY")
+      21 - access("C_CUSTKEY"="O_CUSTKEY")
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=AUTO)
+       - Degree of Parallelism is 4 because of table property
+
+
+    Statistics
+    ----------------------------------------------------------
+       24  recursive calls
+        0  db block gets
+         247902  consistent gets
+        0  physical reads
+           1048  redo size
+           4371  bytes sent via SQL*Net to client
+      585  bytes received via SQL*Net from client
+        5  SQL*Net roundtrips to/from client
+        0  sorts (memory)
+        0  sorts (disk)
+       57  rows processed
+       
+    Discussion: Many parallel operations are inserted to the original query plan, making it looks pretty unreadable. Some operations in the original plan might be duplicated for parallelism. But this improvement outperforms other 4.
+
+
+
+  - Indexes
+    create index orders_orderkey on orders(o_orderkey);
+    create index lineitem_orderkey on lineitem(l_orderkey);
+    create index customer_name on customer(c_name);
+    create index customer_custkey on customer(c_custkey);
+    create index orders_orderdate on orders(o_orderdate);
+    create index orders_totalprice on orders(o_totalprice);
+    o_orderkey
+    l_orderkey
+    c_name,
+    c_custkey,
+    o_orderdate,
+    o_totalprice;
+  
+
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 145273511
+
+    ------------------------------------------------------------------------------------------------------
+
+    | Id  | Operation       | Name        | Rows  | Bytes | Cost (%CPU)| Time     |
+
+    ------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT     |         |     5 |   570 | 62942   (1)| 00:00:03 |
+
+    |   1 |  HASH GROUP BY       |         |     5 |   570 | 62942   (1)| 00:00:03 |
+
+    |   2 |   NESTED LOOPS       |         |     5 |   570 | 62941   (1)| 00:00:03 |
+
+    |   3 |    NESTED LOOPS      |         |  6392 |   570 | 62941   (1)| 00:00:03 |
+
+    |*  4 |     HASH JOIN       |         |     1 |    88 | 62836   (1)| 00:00:03 |
+
+    |   5 |      NESTED LOOPS     |         |     1 |    61 | 61902   (1)| 00:00:03 |
+
+    |   6 |       NESTED LOOPS     |         |     1 |    61 | 61902   (1)| 00:00:03 |
+
+    |   7 |        VIEW       | VW_NSO_1       |  6755K|    83M| 29743   (2)| 00:00:02 |
+
+    |*  8 |   FILTER       |         |       |       |    |       |
+
+    |   9 |    HASH GROUP BY     |         |     1 |   167M| 29743   (2)| 00:00:02 |
+
+    |  10 |     TABLE ACCESS FULL   | LINEITEM       |  6755K|   167M| 29486   (1)| 00:00:02 |
+
+    |* 11 |        INDEX RANGE SCAN    | ORDERS_ORDERKEY   |     1 |       |   2   (0)| 00:00:01 |
+
+    |  12 |       TABLE ACCESS BY INDEX ROWID| ORDERS       |     1 |    48 |   3   (0)| 00:00:01 |
+
+    |  13 |      TABLE ACCESS FULL     | CUSTOMER       |   164K|  4328K| 933   (1)| 00:00:01 |
+
+    |* 14 |     INDEX RANGE SCAN     | LINEITEM_ORDERKEY |  6392 |       |   2   (0)| 00:00:01 |
+
+    |  15 |    TABLE ACCESS BY INDEX ROWID   | LINEITEM       |     5 |   130 | 105   (0)| 00:00:01 |
+
+    ------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       4 - access("C_CUSTKEY"="O_CUSTKEY")
+       8 - filter(SUM("L_QUANTITY")>300)
+      11 - access("O_ORDERKEY"="L_ORDERKEY")
+      14 - access("O_ORDERKEY"="L_ORDERKEY")
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - this is an adaptive plan
+
+
+    Statistics
+    ----------------------------------------------------------
+       88  recursive calls
+        0  db block gets
+         114085  consistent gets
+        0  physical reads
+      284  redo size
+           4363  bytes sent via SQL*Net to client
+      584  bytes received via SQL*Net from client
+        5  SQL*Net roundtrips to/from client
+        6  sorts (memory)
+        0  sorts (disk)
+       57  rows processe
+
+    Discussion: Most table scan operations are replaced by "TABLE ACCESS BY INDEX", which cost much less than full table scan. Still there are some table scan operations cannot make use of indexes. Interestingly, some hash join operations are replaced by nested loop join, i.e. a relatively naive join method. The improvement is slightly better than computing statistics.
+
+
+  - Materialized Views
+    /*
+    Materialized:
+
+    create materialized view c_o_l_q18 enable query rewrite as select * from customer, orders, lineitem 
+    WHERE
+      o_orderkey in (
+       SELECT
+               l_orderkey
+       FROM
+               lineitem
+       GROUP BY
+               l_orderkey having sum(l_quantity) > 300
+      )
+      and c_custkey = o_custkey
+      and o_orderkey = l_orderkey;  
+
+    SELECT /*+ rewrite(c_o_l_q18) */
+
+    */  
+
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 3953678290
+
+    ----------------------------------------------------------------------------------------------------
+
+    | Id  | Operation           | Name     | Rows  | Bytes |TempSpc| Cost (%CPU)| Time     |
+
+    ----------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT         |     |  5575K|   467M|     |   130K  (1)| 00:00:06 |
+
+    |   1 |  HASH GROUP BY           |     |  5575K|   467M|     |   130K  (1)| 00:00:06 |
+
+    |*  2 |   HASH JOIN RIGHT SEMI         |     |  5575K|   467M|     |   130K  (1)| 00:00:06 |
+
+    |   3 |    VIEW            | VW_NSO_1  | 73952 |   938K|     | 37857   (1)| 00:00:02 |
+
+    |*  4 |     FILTER           |     |     |     |     |  |     |
+
+    |   5 |      HASH GROUP BY         |     |  3698 |   649K|   114M| 37857   (1)| 00:00:02 |
+
+    |   6 |       TABLE ACCESS FULL        | LINEITEM  |  6001K|  51M|     | 29480   (1)| 00:00:02 |
+
+    |   7 |    MAT_VIEW REWRITE ACCESS FULL| C_O_L_Q18 |  5575K|   398M|     | 92236   (1)| 00:00:04 |
+
+    ----------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - access("C_O_L_Q18"."O_ORDERKEY"="L_ORDERKEY")
+       4 - filter(SUM("L_QUANTITY")>300)
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+
+
+    Statistics
+    ----------------------------------------------------------
+      244  recursive calls
+        0  db block gets
+         449169  consistent gets
+         340274  physical reads
+      124  redo size
+           4367  bytes sent via SQL*Net to client
+      584  bytes received via SQL*Net from client
+        5  SQL*Net roundtrips to/from client
+       10  sorts (memory)
+        0  sorts (disk)
+       57  rows processe
+       
+    Discussion:  All table scan operations are replaced by "MAT_VIEW REWRITE ACCESS FULL", which costs much less space and time than normal table scan. Some join operations are also eliminated. But strangly we didn't see much improvement on performance.
+
+
+Query 1:
+  - Compute Statistics
+  
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 1773397105
+
+    -------------------------------------------------------------------------------
+    | Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+    -------------------------------------------------------------------------------
+    |   0 | SELECT STATEMENT   |        |     5 |   100 | 29736  (2)| 00:00:02 |
+    |   1 |  HASH GROUP BY     |        |     5 |   100 | 29736  (2)| 00:00:02 |
+    |*  2 |   TABLE ACCESS FULL| LINEITEM |  5789K|   110M| 29518  (1)| 00:00:02 |
+    -------------------------------------------------------------------------------
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - filter("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00',
+            'syyyy-mm-dd hh24:mi:ss'))
+
+
+    Statistics
+    ----------------------------------------------------------
+        0  recursive calls
+        0  db block gets
+         108570  consistent gets
+        0  physical reads
+      124  redo size
+           1694  bytes sent via SQL*Net to client
+      552  bytes received via SQL*Net from client
+        2  SQL*Net roundtrips to/from client
+        0  sorts (memory)
+        0  sorts (disk)
+        4  rows processed
+        
+    Discussion: same as other queries, statistics does not help much on query optimization.
+
+
+    - In-Memory Tables
+
+      Execution Plan
+      ----------------------------------------------------------
+      Plan hash value: 1773397105
+
+      ----------------------------------------------------------------------------------------
+
+      | Id  | Operation        | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+
+      ----------------------------------------------------------------------------------------
+
+      |   0 | SELECT STATEMENT      |         |  6657K|   425M|  1617  (33)| 00:00:01 |
+
+      |   1 |  HASH GROUP BY        |         |  6657K|   425M|  1617  (33)| 00:00:01 |
+
+      |*  2 |   TABLE ACCESS INMEMORY FULL| LINEITEM |  6657K|   425M|  1364  (21)| 00:00:01 |
+
+      ----------------------------------------------------------------------------------------
+
+
+      Predicate Information (identified by operation id):
+      ---------------------------------------------------
+
+         2 - inmemory("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00', 'syyyy-mm-dd
+              hh24:mi:ss'))
+             filter("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00', 'syyyy-mm-dd
+              hh24:mi:ss'))
+
+      Note
+      -----
+         - dynamic statistics used: dynamic sampling (level=2)
+
+
+      Statistics
+      ----------------------------------------------------------
+         24  recursive calls
+          0  db block gets
+        142  consistent gets
+          0  physical reads
+        124  redo size
+             1694  bytes sent via SQL*Net to client
+        552  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          1  sorts (memory)
+          0  sorts (disk)
+          4  rows processe
+          
+    Discussion: All table accesses become "inmemory", and the order of each operation changed accordingly. Unlike no inmemory, table scan operaions are "mixed" with multiple join operations, but we witnessed apparent speed up.
+
+
+  - Parallelism
+  
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 2698183184
+
+    ------------------------------------------------------------------------------------------------------------------
+
+    | Id  | Operation     | Name     | Rows  | Bytes | Cost (%CPU)| Time    |   TQ  |IN-OUT| PQ Distrib |
+
+    ------------------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT   |      |    3 |  267 |  8265   (2)| 00:00:01 |       |      |     |
+
+    |   1 |  PX COORDINATOR    |      |      |      |     |    |       |      |     |
+
+    |   2 |   PX SEND QC (RANDOM)   | :TQ10001 |    3 |  267 |  8265   (2)| 00:00:01 |  Q1,01 | P->S | QC (RAND)  |
+
+    |   3 |    HASH GROUP BY   |      |    3 |  267 |  8265   (2)| 00:00:01 |  Q1,01 | PCWP |     |
+
+    |   4 |     PX RECEIVE     |      |    3 |  267 |  8265   (2)| 00:00:01 |  Q1,01 | PCWP |     |
+
+    |   5 |      PX SEND HASH   | :TQ10000 |    3 |  267 |  8265   (2)| 00:00:01 |  Q1,00 | P->P | HASH   |
+
+    |   6 |       HASH GROUP BY   |      |    3 |  267 |  8265   (2)| 00:00:01 |  Q1,00 | PCWP |     |
+
+    |   7 |        PX BLOCK ITERATOR |      |  6387K|  408M|  8203   (1)| 00:00:01 |  Q1,00 | PCWC |     |
+
+    |*  8 |   TABLE ACCESS FULL| LINEITEM |  6387K|  408M|  8203   (1)| 00:00:01 |  Q1,00 | PCWP |     |
+
+    ------------------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       8 - filter("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00', 'syyyy-mm-dd hh24:mi
+    :ss'))
+
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=AUTO)
+       - Degree of Parallelism is 4 because of table property
+
+
+    Statistics
+    ----------------------------------------------------------
+       24  recursive calls
+        0  db block gets
+         109638  consistent gets
+        0  physical reads
+      408  redo size
+           1696  bytes sent via SQL*Net to client
+      552  bytes received via SQL*Net from client
+        2  SQL*Net roundtrips to/from client
+        0  sorts (memory)
+        0  sorts (disk)
+        4  rows processed
+        
+        Discussion: Many parallel operations are inserted to the original query plan, making it looks pretty unreadable. Some operations in the original plan might be duplicated for parallelism. But this improvement outperforms other 4.
+
+
+  - Indexes
+        
+    l_shipdate
+    l_returnflag
+    l_linestatus
+    create index lineitem_shipdate on lineitem(l_shipdate);
+    create index lineitem_returnflag on lineitem(l_returnflag);
+    create index lineitem_linestatus on lineitem(l_linestatus);
+    create index lineitem_quantity on lineitem(l_quantity);
+
+
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 466087209
+
+    ----------------------------------------------------------------------------------------------------------
+
+    | Id  | Operation           | Name     | Rows  | Bytes | Cost (%CPU)| Time   |
+
+    ----------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT         |       |  5927K|   378M|  3914K  (1)| 00:02:33 |
+
+    |   1 |  HASH GROUP BY           |       |  5927K|   378M|  3914K  (1)| 00:02:33 |
+
+    |   2 |   TABLE ACCESS BY INDEX ROWID BATCHED| LINEITEM    |  5927K|   378M|  3913K  (1)| 00:02:33 |
+
+    |*  3 |    INDEX RANGE SCAN         | LINEITEM_SHIPDATE |  5916K| | 10658   (1)| 00:00:01 |
+
+    ----------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       3 - access("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - 1 Sql Plan Directive used for this statement
+
+
+    Statistics
+    ----------------------------------------------------------
+       19  recursive calls
+        0  db block gets
+        5827671  consistent gets
+           6873  physical reads
+      124  redo size
+           1694  bytes sent via SQL*Net to client
+      552  bytes received via SQL*Net from client
+        2  SQL*Net roundtrips to/from client
+        1  sorts (memory)
+        0  sorts (disk)
+        4  rows processed
+
+    Discussion: the original table scan is replaced by two index scan operations. But surprisingly each of the two index scan cost much more than the original full table scan, thus the performance became much worse than default configuration.
+
+
+  - Materialized Views
+      
+    /*
+    Materialized:
+    create materialized view lineitem_q1 enable query rewrite as select * from lineitem where l_shipdate <= DATE '1998-09-02';
+
+    SELECT /* +rewrite(lineitem_q1) */
+
+    */
+    
+    
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 676800950
+
+    ---------------------------------------------------------------------------------------------
+
+    | Id  | Operation          | Name      | Rows  | Bytes | Cost (%CPU)| Time     |
+
+    ---------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT        |       |  6666K|  368M| 29353   (2)| 00:00:02 |
+
+    |   1 |  HASH GROUP BY          |       |  6666K|  368M| 29353   (2)| 00:00:02 |
+
+    |   2 |   MAT_VIEW REWRITE ACCESS FULL| LINEITEM_Q1 |  6666K|  368M| 29100   (1)| 00:00:02 |
+
+    ---------------------------------------------------------------------------------------------
+
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+
+
+    Statistics
+    ----------------------------------------------------------
+        0  recursive calls
+        0  db block gets
+         107039  consistent gets
+         107033  physical reads
+        0  redo size
+           1694  bytes sent via SQL*Net to client
+      551  bytes received via SQL*Net from client
+        2  SQL*Net roundtrips to/from client
+        0  sorts (memory)
+        0  sorts (disk)
+        4  rows processed
+
+    Discussion:  The table scan operation is replaced by "MAT_VIEW REWRITE ACCESS FULL", which costs much less space and time than normal table scan. But strangly we didn't see much improvement on performance.
+
+
+Query 22:
+  - Compute Statistics
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 1384268742
+
+    ----------------------------------------------------------------------------------
+
+    | Id  | Operation        | Name   | Rows  | Bytes | Cost (%CPU)| Time |
+
+    ----------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT      |    |     1 |    28 |  8421   (1)| 00:00:01 |
+
+    |   1 |  HASH GROUP BY        |    |     1 |    28 |  8421   (1)| 00:00:01 |
+
+    |*  2 |   HASH JOIN ANTI      |    |     5 |   140 |  7481   (1)| 00:00:01 |
+
+    |*  3 |    TABLE ACCESS FULL  | CUSTOMER |   510 | 12240 |   934   (1)| 00:00:01 |
+
+    |   4 |     SORT AGGREGATE    |    |     1 |    20 |        | |
+
+    |*  5 |      TABLE ACCESS FULL| CUSTOMER | 44719 |   873K|   939   (1)| 00:00:01 |
+
+    |   6 |    TABLE ACCESS FULL  | ORDERS   |  1500K|  5859K|  6541   (1)| 00:00:01 |
+
+    ----------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - access("O_CUSTKEY"="C_CUSTKEY")
+       3 - filter((SUBSTR("C_PHONE",1,2)='13' OR SUBSTR("C_PHONE",1,2)='31'
+            OR SUBSTR("C_PHONE",1,2)='23' OR SUBSTR("C_PHONE",1,2)='29' OR
+            SUBSTR("C_PHONE",1,2)='30' OR SUBSTR("C_PHONE",1,2)='18' OR
+            SUBSTR("C_PHONE",1,2)='17') AND "C_ACCTBAL"> (SELECT AVG("C_ACCTBAL")
+
+            FROM "CUSTOMER" "CUSTOMER" WHERE "C_ACCTBAL">0.00 AND
+            (SUBSTR("C_PHONE",1,2)='13' OR SUBSTR("C_PHONE",1,2)='31' OR
+            SUBSTR("C_PHONE",1,2)='23' OR SUBSTR("C_PHONE",1,2)='29' OR
+            SUBSTR("C_PHONE",1,2)='30' OR SUBSTR("C_PHONE",1,2)='18' OR
+            SUBSTR("C_PHONE",1,2)='17')))
+       5 - filter("C_ACCTBAL">0.00 AND (SUBSTR("C_PHONE",1,2)='13' OR
+            SUBSTR("C_PHONE",1,2)='31' OR SUBSTR("C_PHONE",1,2)='23' OR
+            SUBSTR("C_PHONE",1,2)='29' OR SUBSTR("C_PHONE",1,2)='30' OR
+            SUBSTR("C_PHONE",1,2)='18' OR SUBSTR("C_PHONE",1,2)='17'))
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - 1 Sql Plan Directive used for this statement
+
+
+    Statistics
+    ----------------------------------------------------------
+       35  recursive calls
+        0  db block gets
+          31889  consistent gets
+        0  physical reads
+      204  redo size
+      855  bytes sent via SQL*Net to client
+      551  bytes received via SQL*Net from client
+        2  SQL*Net roundtrips to/from client
+        0  sorts (memory)
+        0  sorts (disk)
+        7  rows processed
+
+    Discussion: same as other queries, statistics does not help much on query optimization.
+    
+
+  - In-Memory Tables
+  
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 1384268742
+
+    -------------------------------------------------------------------------------------------
+
+    | Id  | Operation           | Name    | Rows  | Bytes | Cost (%CPU)| Time    |
+
+    -------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT         |    |    10 |   560 |   378  (18)| 00:00:01 |
+
+    |   1 |  HASH GROUP BY           |    |    10 |   560 |   378  (18)| 00:00:01 |
+
+    |*  2 |   HASH JOIN ANTI         |    |    10 |   560 |   336  (18)| 00:00:01 |
+
+    |*  3 |    TABLE ACCESS INMEMORY FULL  | CUSTOMER |   952 | 40936 |    42  (17)| 00:00:01 |
+
+    |   4 |     SORT AGGREGATE         |    |  1 |    30 |         |    |
+
+    |*  5 |      TABLE ACCESS INMEMORY FULL| CUSTOMER | 44719 |  1310K|    42  (17)| 00:00:01 |
+
+    |   6 |    TABLE ACCESS INMEMORY FULL  | ORDERS   |  1400K|    17M|   289  (17)| 00:00:01 |
+
+    -------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - access("O_CUSTKEY"="C_CUSTKEY")
+       3 - filter((SUBSTR("C_PHONE",1,2)='13' OR SUBSTR("C_PHONE",1,2)='31' OR
+            SUBSTR("C_PHONE",1,2)='23' OR SUBSTR("C_PHONE",1,2)='29' OR
+            SUBSTR("C_PHONE",1,2)='30' OR SUBSTR("C_PHONE",1,2)='18' OR
+            SUBSTR("C_PHONE",1,2)='17') AND "C_ACCTBAL"> (SELECT AVG("C_ACCTBAL") FROM
+
+            "CUSTOMER" "CUSTOMER" WHERE "C_ACCTBAL">0.00 AND (SUBSTR("C_PHONE",1,2)='13' OR
+
+            SUBSTR("C_PHONE",1,2)='31' OR SUBSTR("C_PHONE",1,2)='23' OR
+            SUBSTR("C_PHONE",1,2)='29' OR SUBSTR("C_PHONE",1,2)='30' OR
+            SUBSTR("C_PHONE",1,2)='18' OR SUBSTR("C_PHONE",1,2)='17')))
+       5 - inmemory("C_ACCTBAL">0.00)
+           filter("C_ACCTBAL">0.00 AND (SUBSTR("C_PHONE",1,2)='13' OR
+            SUBSTR("C_PHONE",1,2)='31' OR SUBSTR("C_PHONE",1,2)='23' OR
+            SUBSTR("C_PHONE",1,2)='29' OR SUBSTR("C_PHONE",1,2)='30' OR
+            SUBSTR("C_PHONE",1,2)='18' OR SUBSTR("C_PHONE",1,2)='17'))
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - 2 Sql Plan Directives used for this statement
+
+
+    Statistics
+    ----------------------------------------------------------
+        0  recursive calls
+        0  db block gets
+        9  consistent gets
+        0  physical reads
+        0  redo size
+      855  bytes sent via SQL*Net to client
+      552  bytes received via SQL*Net from client
+        2  SQL*Net roundtrips to/from client
+        0  sorts (memory)
+        0  sorts (disk)
+        7  rows processed
+        
+    Discussion: All table accesses become "inmemory", and the order of each operation changed accordingly. Unlike no inmemory, table scan operaions are "mixed" with multiple join operations, but we witnessed apparent speed up.
+ 
+
+
+
+  - Parallelism
+  
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 1374175114
+
+    ---------------------------------------------------------------------------------------------------------------------------
+
+    | Id  | Operation        | Name     | Rows  | Bytes | Cost (%CPU)| Time     |    TQ  |IN-OUT| PQ Distrib |
+
+    ---------------------------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT      |       |    10 |   560 |  2337   (1)| 00:00:01 |        |      |      |
+
+    |   1 |  PX COORDINATOR       |       |       |       |  |       |        |      |      |
+
+    |   2 |   PX SEND QC (RANDOM)      | :TQ20003 |    10 |   560 |  2337   (1)| 00:00:01 |  Q2,03 | P->S | QC (RAND)  |
+
+    |   3 |    HASH GROUP BY      |       |    10 |   560 |  2337   (1)| 00:00:01 |  Q2,03 | PCWP |      |
+
+    |   4 |     PX RECEIVE        |       |    10 |   560 |  2337   (1)| 00:00:01 |  Q2,03 | PCWP |      |
+
+    |   5 |      PX SEND HASH      | :TQ20002 |    10 |   560 |  2337   (1)| 00:00:01 |  Q2,02 | P->P | HASH    |
+
+    |   6 |       HASH GROUP BY      |       |    10 |   560 |  2337   (1)| 00:00:01 |  Q2,02 | PCWP |      |
+
+    |*  7 |        HASH JOIN ANTI      |       |    10 |   560 |  2076   (1)| 00:00:01 |  Q2,02 | PCWP |      |
+
+    |   8 |   PX RECEIVE      |       |   952 | 40936 |   260   (1)| 00:00:01 |  Q2,02 | PCWP |      |
+
+    |   9 |    PX SEND HASH      | :TQ20000 |   952 | 40936 |   260   (1)| 00:00:01 |  Q2,00 | P->P | HASH    |
+
+    |  10 |     PX BLOCK ITERATOR    |       |   952 | 40936 |   260   (1)| 00:00:01 |  Q2,00 | PCWC |      |
+
+    |* 11 |      TABLE ACCESS FULL    | CUSTOMER |   952 | 40936 |   260   (1)| 00:00:01 |  Q2,00 | PCWP |      |
+
+    |  12 |       SORT AGGREGATE    |       |     1 |    30 |  |       |  Q2,00 | PCWP |      |
+
+    |  13 |        PX COORDINATOR    |       |       |       |  |       |        |      |      |
+
+    |  14 |         PX SEND QC (RANDOM) | :TQ10000 |     1 |    30 |  |       |  Q1,00 | P->S | QC (RAND)  |
+
+    |  15 |          SORT AGGREGATE    |       |     1 |    30 |  |       |  Q1,00 | PCWP |      |
+
+    |  16 |     PX BLOCK ITERATOR |       | 44719 |  1310K|   260   (1)| 00:00:01 |  Q1,00 | PCWC |      |
+
+    |* 17 |      TABLE ACCESS FULL| CUSTOMER | 44719 |  1310K|   260   (1)| 00:00:01 |  Q1,00 | PCWP |      |
+
+    |  18 |   PX RECEIVE      |       |  1400K|    17M|  1815   (1)| 00:00:01 |  Q2,02 | PCWP |      |
+
+    |  19 |    PX SEND HASH      | :TQ20001 |  1400K|    17M|  1815   (1)| 00:00:01 |  Q2,01 | P->P | HASH    |
+
+    |  20 |     PX BLOCK ITERATOR    |       |  1400K|    17M|  1815   (1)| 00:00:01 |  Q2,01 | PCWC |      |
+
+    |  21 |      TABLE ACCESS FULL    | ORDERS   |  1400K|    17M|  1815   (1)| 00:00:01 |  Q2,01 | PCWP |      |
+
+    ---------------------------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       7 - access("O_CUSTKEY"="C_CUSTKEY")
+      11 - filter((SUBSTR("C_PHONE",1,2)='13' OR SUBSTR("C_PHONE",1,2)='31' OR SUBSTR("C_PHONE",1,2)='23' OR
+
+            SUBSTR("C_PHONE",1,2)='29' OR SUBSTR("C_PHONE",1,2)='30' OR SUBSTR("C_PHONE",1,2)='18' OR
+
+            SUBSTR("C_PHONE",1,2)='17') AND "C_ACCTBAL"> (SELECT AVG(SYS_OP_CSR(SYS_OP_MSR(AVG("C_ACCTBAL")),0)) FROM
+
+            "CUSTOMER" "CUSTOMER" WHERE "C_ACCTBAL">0.00 AND (SUBSTR("C_PHONE",1,2)='13' OR SUBSTR("C_PHONE",1,2)='31' OR
+
+            SUBSTR("C_PHONE",1,2)='23' OR SUBSTR("C_PHONE",1,2)='29' OR SUBSTR("C_PHONE",1,2)='30' OR
+
+            SUBSTR("C_PHONE",1,2)='18' OR SUBSTR("C_PHONE",1,2)='17')))
+      17 - filter("C_ACCTBAL">0.00 AND (SUBSTR("C_PHONE",1,2)='13' OR SUBSTR("C_PHONE",1,2)='31' OR
+
+            SUBSTR("C_PHONE",1,2)='23' OR SUBSTR("C_PHONE",1,2)='29' OR SUBSTR("C_PHONE",1,2)='30' OR
+
+            SUBSTR("C_PHONE",1,2)='18' OR SUBSTR("C_PHONE",1,2)='17'))
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - Degree of Parallelism is 4 because of table property
+       - 1 Sql Plan Directive used for this statement
+
+    Discussion: Many parallel operations are inserted to the original query plan, making it looks pretty unreadable. Some operations in the original plan might be duplicated for parallelism. But this improvement outperforms other 4.
+
+  - Indexes
+    o_custkey 
+    c_custkey
+    substr(c_phone, 1, 2)
+    
+
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 2737832169
+
+    -----------------------------------------------------------------------------------------------------------
+
+    | Id  | Operation            | Name      | Rows  | Bytes | Cost (%CPU)| Time    |
+
+    -----------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT          |       |  1 |    35 |   749   (1)| 00:00:01 |
+
+    |   1 |  HASH GROUP BY            |       |  1 |    35 |   749   (1)| 00:00:01 |
+
+    |   2 |   NESTED LOOPS ANTI          |       |  1 |    35 |   355   (1)| 00:00:01 |
+
+    |   3 |    TABLE ACCESS BY INDEX ROWID BATCHED| CUSTOMER    |    75 |  2250 |   205   (1)| 00:00:01 |
+
+    |   4 |     BITMAP CONVERSION TO ROWIDS       |       |    |  |         |    |
+
+    |   5 |      BITMAP AND           |       |    |  |         |    |
+
+    |   6 |       BITMAP CONVERSION FROM ROWIDS   |       |    |  |         |    |
+
+    |   7 |        SORT ORDER BY          |       |    |  |         |    |
+
+    |*  8 |   INDEX RANGE SCAN        | CUSTOMER_ACCTBAL  |  1350 |  |  5   (0)| 00:00:01 |
+
+    |   9 |    SORT AGGREGATE         |       |  1 |9 |         |    |
+
+    |* 10 |     VIEW            | index$_join$_003  | 38292 |   336K|   393   (1)| 00:00:01 |
+
+    |* 11 |      HASH JOIN          |       |    |  |         |    |
+
+    |  12 |       INLIST ITERATOR        |       |    |  |         |    |
+
+    |* 13 |        INDEX RANGE SCAN        | CUSTOMER_SUBPHONE | 38292 |   336K|    84   (0)| 00:00:01 |
+
+    |* 14 |       INDEX RANGE SCAN        | CUSTOMER_ACCTBAL  | 38292 |   336K|  1042   (1)| 00:00:01 |
+
+    |  15 |       BITMAP OR           |       |    |  |         |    |
+
+    |  16 |        BITMAP CONVERSION FROM ROWIDS  |       |    |  |         |    |
+
+    |* 17 |   INDEX RANGE SCAN        | CUSTOMER_SUBPHONE |  1350 |  |    12   (0)| 00:00:01 |
+
+    |  18 |        BITMAP CONVERSION FROM ROWIDS  |       |    |  |         |    |
+
+    |* 19 |   INDEX RANGE SCAN        | CUSTOMER_SUBPHONE |  1350 |  |    12   (0)| 00:00:01 |
+
+    |  20 |        BITMAP CONVERSION FROM ROWIDS  |       |    |  |         |    |
+
+    |* 21 |   INDEX RANGE SCAN        | CUSTOMER_SUBPHONE |  1350 |  |    12   (0)| 00:00:01 |
+
+    |  22 |        BITMAP CONVERSION FROM ROWIDS  |       |    |  |         |    |
+
+    |* 23 |   INDEX RANGE SCAN        | CUSTOMER_SUBPHONE |  1350 |  |    12   (0)| 00:00:01 |
+
+    |  24 |        BITMAP CONVERSION FROM ROWIDS  |       |    |  |         |    |
+
+    |* 25 |   INDEX RANGE SCAN        | CUSTOMER_SUBPHONE |  1350 |  |    12   (0)| 00:00:01 |
+
+    |  26 |        BITMAP CONVERSION FROM ROWIDS  |       |    |  |         |    |
+
+    |* 27 |   INDEX RANGE SCAN        | CUSTOMER_SUBPHONE |  1350 |  |    12   (0)| 00:00:01 |
+
+    |  28 |        BITMAP CONVERSION FROM ROWIDS  |       |    |  |         |    |
+
+    |* 29 |   INDEX RANGE SCAN        | CUSTOMER_SUBPHONE |  1350 |  |    12   (0)| 00:00:01 |
+
+    |* 30 |    INDEX RANGE SCAN          | ORDERS_CUSTKEY    |  1500K|  7324K|  2   (0)| 00:00:01 |
+
+    -----------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       8 - access("C_ACCTBAL"> (SELECT AVG("C_ACCTBAL") FROM  (SELECT "C_ACCTBAL"
+            "C_ACCTBAL",SUBSTR("C_PHONE",1,2) "SYS_NC00010$",ROWID "ROWID" FROM "CUSTOMER"
+
+            "indexjoin$_alias$_002","CUSTOMER" "indexjoin$_alias$_001" WHERE (SUBSTR("C_PHONE",1,2)='13' OR
+
+            SUBSTR("C_PHONE",1,2)='17' OR SUBSTR("C_PHONE",1,2)='18' OR SUBSTR("C_PHONE",1,2)='23' OR
+
+            SUBSTR("C_PHONE",1,2)='29' OR SUBSTR("C_PHONE",1,2)='30' OR SUBSTR("C_PHONE",1,2)='31') AND
+
+            "C_ACCTBAL">0.00 AND ROWID=ROWID) "CUSTOMER" WHERE ("CUSTOMER"."SYS_NC00010$"='13' OR
+
+            "CUSTOMER"."SYS_NC00010$"='17' OR "CUSTOMER"."SYS_NC00010$"='18' OR "CUSTOMER"."SYS_NC00010$"='23'
+
+            OR "CUSTOMER"."SYS_NC00010$"='29' OR "CUSTOMER"."SYS_NC00010$"='30' OR
+
+            "CUSTOMER"."SYS_NC00010$"='31') AND "C_ACCTBAL">0.00))
+           filter("C_ACCTBAL"> (SELECT AVG("C_ACCTBAL") FROM  (SELECT "C_ACCTBAL"
+            "C_ACCTBAL",SUBSTR("C_PHONE",1,2) "SYS_NC00010$",ROWID "ROWID" FROM "CUSTOMER"
+
+            "indexjoin$_alias$_002","CUSTOMER" "indexjoin$_alias$_001" WHERE (SUBSTR("C_PHONE",1,2)='13' OR
+
+            SUBSTR("C_PHONE",1,2)='17' OR SUBSTR("C_PHONE",1,2)='18' OR SUBSTR("C_PHONE",1,2)='23' OR
+
+            SUBSTR("C_PHONE",1,2)='29' OR SUBSTR("C_PHONE",1,2)='30' OR SUBSTR("C_PHONE",1,2)='31') AND
+
+            "C_ACCTBAL">0.00 AND ROWID=ROWID) "CUSTOMER" WHERE ("CUSTOMER"."SYS_NC00010$"='13' OR
+
+            "CUSTOMER"."SYS_NC00010$"='17' OR "CUSTOMER"."SYS_NC00010$"='18' OR "CUSTOMER"."SYS_NC00010$"='23'
+
+            OR "CUSTOMER"."SYS_NC00010$"='29' OR "CUSTOMER"."SYS_NC00010$"='30' OR
+
+            "CUSTOMER"."SYS_NC00010$"='31') AND "C_ACCTBAL">0.00))
+      10 - filter(("CUSTOMER"."SYS_NC00010$"='13' OR "CUSTOMER"."SYS_NC00010$"='17'OR
+
+            "CUSTOMER"."SYS_NC00010$"='18' OR "CUSTOMER"."SYS_NC00010$"='23' OR "CUSTOMER"."SYS_NC00010$"='29'
+
+            OR "CUSTOMER"."SYS_NC00010$"='30' OR "CUSTOMER"."SYS_NC00010$"='31') AND "C_ACCTBAL">0.00)
+
+      11 - access(ROWID=ROWID)
+      13 - access(SUBSTR("C_PHONE",1,2)='13' OR SUBSTR("C_PHONE",1,2)='17' OR
+            SUBSTR("C_PHONE",1,2)='18' OR SUBSTR("C_PHONE",1,2)='23' OR SUBSTR("C_PHONE",1,2)='29' OR
+
+            SUBSTR("C_PHONE",1,2)='30' OR SUBSTR("C_PHONE",1,2)='31')
+      14 - access("C_ACCTBAL">0.00)
+      17 - access(SUBSTR("C_PHONE",1,2)='13')
+      19 - access(SUBSTR("C_PHONE",1,2)='17')
+      21 - access(SUBSTR("C_PHONE",1,2)='18')
+      23 - access(SUBSTR("C_PHONE",1,2)='23')
+      25 - access(SUBSTR("C_PHONE",1,2)='29')
+      27 - access(SUBSTR("C_PHONE",1,2)='30')
+      29 - access(SUBSTR("C_PHONE",1,2)='31')
+      30 - access("O_CUSTKEY"="C_CUSTKEY")
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - this is an adaptive plan
+       - 1 Sql Plan Directive used for this statement
+
+
+    Statistics
+    ----------------------------------------------------------
+      131  recursive calls
+        0  db block gets
+          16017  consistent gets
+           2848  physical reads
+      124  redo size
+      855  bytes sent via SQL*Net to client
+      552  bytes received via SQL*Net from client
+        2  SQL*Net roundtrips to/from client
+        1  sorts (memory)
+        0  sorts (disk)
+        7  rows processe
+        
+    Discussion: The original full table scan opertaions are replaced by numerious index table scan operations, together some bitmap operation being inserted. The number of claused increased a lot, so does the predicate, which is quite complicated. As before, some hash joins are replaced by nested loop join. The overall performance is slightly improved.
+
+
+  - Materialized Views
+  
+    /*
+    Materialized:
+      
+    create materialized view c_o_q22 enable query rewrite as select * from customer where substr(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17')
+      AND c_acctbal > (
+       SELECT avg(c_acctbal)
+       FROM customer
+       WHERE c_acctbal > 0.00
+        AND substr(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17')
+      )  AND NOT EXISTS (
+       SELECT *
+       FROM orders
+       WHERE o_custkey = c_custkey
+      );
+
+    SELECT /* +rewrite(c_o_q22) */
+    SELECT /* +rewrite(c_view_q22) */
+    */
+
+    Execution Plan
+    ----------------------------------------------------------
+    Plan hash value: 2897193995
+
+    -----------------------------------------------------------------------------------------
+
+    | Id  | Operation          | Name  | Rows  | Bytes | Cost (%CPU)| Time  |
+
+    -----------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT        |   |  5863 |   171K|    42   (3)| 00:00:01 |
+
+    |   1 |  HASH GROUP BY          |   |  5863 |   171K|    42   (3)| 00:00:01 |
+
+    |   2 |   MAT_VIEW REWRITE ACCESS FULL| C_O_Q22 |  5863 |   171K|    41   (0)| 00:00:01 |
+
+    -----------------------------------------------------------------------------------------
+
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+
+
+    Statistics
+    ----------------------------------------------------------
+        0  recursive calls
+
+    ▽
+        0  db block gets
+      150  consistent gets
+        0  physical reads
+        0  redo size
+      855  bytes sent via SQL*Net to client
+      551  bytes received via SQL*Net from client
+        2  SQL*Net roundtrips to/from client
+        0  sorts (memory)
+        0  sorts (disk)
+        7  rows processed
+
+    Discussion:  The table scan operation is replaced by "MAT_VIEW REWRITE ACCESS FULL", which costs much less space and time than normal table scan. All join operations are eliminated. The improvement is obvious: from average 0.428s to average 0.012s.
+
+
+
+Query 3:
+  - Compute Statistics
+    | Id  | Operation            | Name     | Rows  | Bytes |TempSpc| Cost (%CPU)| Time     |
+
+    -----------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT     |          | 11620 |   567K|       | 42212   (1)| 00:00:02 |
+
+    |   1 |  HASH GROUP BY       |          | 11620 |   567K|       | 42212   (1)| 00:00:02 |
+
+    |*  2 |   HASH JOIN          |          |   492K|    23M|  9192K| 42195   (1)| 00:00:02 |
+
+    |*  3 |    HASH JOIN         |          |   218K|  6622K|       |  7480   (1)| 00:00:01 |
+
+    |*  4 |     TABLE ACCESS FULL| CUSTOMER | 30000 |   410K|       |   935   (1)| 00:00:01 |
+
+    |*  5 |     TABLE ACCESS FULL| ORDERS   |   729K|    11M|       |  6543   (1)| 00:00:01 |
+
+    |*  6 |    TABLE ACCESS FULL | LINEITEM |  3225K|    58M|       | 29518   (1)| 00:00:02 |
+
+    -----------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - access("L_ORDERKEY"="O_ORDERKEY")
+       3 - access("C_CUSTKEY"="O_CUSTKEY")
+       4 - filter("C_MKTSEGMENT"='BUILDING')
+       5 - filter("O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+            hh24:mi:ss'))
+       6 - filter("L_SHIPDATE">TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd
+            hh24:mi:ss'))
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - 1 Sql Plan Directive used for this statement
+
+  
+  
+  
+  
+  - In-Memory Tables
+    | Id  | Operation                       | Name      | Rows  | Bytes |TempSpc|Cost (%CPU)| Time     |
+
+    -------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT                  |        |   747K|    52M|       |5110  (9)| 00:00:01 |
+
+    |   1 |  HASH GROUP BY                    |        |   747K|    52M|       |5110  (9)| 00:00:01 |
+
+    |   2 |   MERGE JOIN                      |        |   747K|    52M|       |5084  (8)| 00:00:01 |
+
+    |   3 |    SORT JOIN                      |        |  3654K|    90M|       |1399  (23)| 00:00:01 |
+
+    |   4 |     VIEW                          | VW_GBC_9  |  3654K|    90M|       |1399  (23)| 00:00:01 |
+
+    |   5 |      HASH GROUP BY                |        |  3654K|   167M|       |1399  (23)| 00:00:01 |
+
+    |*  6 |       TABLE ACCESS INMEMORY FULL  | LINEITEM  |  3654K|   167M|       |1265  (14)| 00:00:01 |
+
+    |*  7 |    SORT JOIN                      |        |   279K|    12M|    32M|3685  (3)| 00:00:01 |
+
+    |   8 |     VIEW                          | VW_GBF_10 |   279K|    12M|       |346  (20)| 00:00:01 |
+
+    |   9 |      HASH GROUP BY                |        |   279K|    19M|       |346  (20)| 00:00:01 |
+
+    |* 10 |       HASH JOIN                   |        |   279K|    19M|       |336  (18)| 00:00:01 |
+
+    |  11 |        JOIN FILTER CREATE         | :BF0000   | 33701 |   822K|       |41  (15)| 00:00:01 |
+
+    |* 12 |         TABLE ACCESS INMEMORY FULL| CUSTOMER  | 33701 |   822K|       |41  (15)| 00:00:01 |
+
+    |  13 |        JOIN FILTER USE            | :BF0000   |   682K|    31M|       |292  (18)| 00:00:01 |
+
+    |* 14 |         TABLE ACCESS INMEMORY FULL| ORDERS    |   682K|    31M|       |292  (18)| 00:00:01 |
+
+    -------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       6 - inmemory("L_SHIPDATE">TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+           filter("L_SHIPDATE">TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+       7 - access("ITEM_1"="ITEM_1")
+           filter("ITEM_1"="ITEM_1")
+      10 - access("C_CUSTKEY"="O_CUSTKEY")
+      12 - inmemory("C_MKTSEGMENT"='BUILDING')
+           filter("C_MKTSEGMENT"='BUILDING')
+      14 - inmemory("O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND
+
+            SYS_OP_BLOOM_FILTER(:BF0000,"O_CUSTKEY"))
+           filter("O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND
+
+            SYS_OP_BLOOM_FILTER(:BF0000,"O_CUSTKEY"))
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - 1 Sql Plan Directive used for this statement
+
+
+
+  - Parallelism
+    | Id  | Operation           | Name   | Rows  | Bytes | Cost(%CPU)| Time   |    TQ  |IN-OUT| PQ Distrib |
+
+    -------------------------------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT         |     |  3551 |   423K| 10282(1)| 00:00:01 |    |   |        |
+
+    |   1 |  PX COORDINATOR          |     |   |   ||    |    |   |        |
+
+    |   2 |   PX SEND QC (RANDOM)         | :TQ10004  |  3551 |   423K| 10282(1)| 00:00:01 |  Q1,04 | P->S | QC (RAND)  |
+
+    |   3 |    HASH GROUP BY         |     |  3551 |   423K| 10282(1)| 00:00:01 |  Q1,04 | PCWP |        |
+
+    |   4 |     PX RECEIVE           |     |  3551 |   423K| 10282(1)| 00:00:01 |  Q1,04 | PCWP |        |
+
+    |   5 |      PX SEND HASH         | :TQ10003  |  3551 |   423K| 10282(1)| 00:00:01 |  Q1,03 | P->P | HASH       |
+
+    |   6 |       HASH GROUP BY         |     |  3551 |   423K| 10282(1)| 00:00:01 |  Q1,03 | PCWP |        |
+
+    |*  7 |        HASH JOIN         |     |  3551 |   423K| 10281(1)| 00:00:01 |  Q1,03 | PCWP |        |
+
+    |   8 |         JOIN FILTER CREATE       | :BF0000   |  3252 |   235K|  2078(1)| 00:00:01 |  Q1,03 | PCWP |        |
+
+    |   9 |          PX RECEIVE         |     |  3252 |   235K|  2078(1)| 00:00:01 |  Q1,03 | PCWP |        |
+
+    |  10 |           PX SEND BROADCAST       | :TQ10002  |  3252 |   235K|  2078(1)| 00:00:01 |  Q1,02 | P->P | BROADCAST  |
+
+    |* 11 |            HASH JOIN         |     |  3252 |   235K|  2078(1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+    |  12 |             PX RECEIVE         |     |  2802 | 72852 |   261(1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+    |  13 |              PX SEND BROADCAST       | :TQ10001  |  2802 | 72852 |   261(1)| 00:00:01 |  Q1,01 | P->P | BROADCAST  |
+
+    |  14 |               VIEW         | VW_GBF_11 |  2802 | 72852 |   261(1)| 00:00:01 |  Q1,01 | PCWP |        |
+
+    |  15 |                HASH GROUP BY       |     |  2802 | 70050 |   261(1)| 00:00:01 |  Q1,01 | PCWP |        |
+
+    |  16 |                 PX RECEIVE       |     |  2802 | 70050 |   261(1)| 00:00:01 |  Q1,01 | PCWP |        |
+
+    |  17 |                  PX SEND HASH       | :TQ10000  |  2802 | 70050 |   261(1)| 00:00:01 |  Q1,00 | P->P | HASH       |
+
+    |  18 |                   HASH GROUP BY      |     |  2802 | 70050 |   261(1)| 00:00:01 |  Q1,00 | PCWP |        |
+
+    |  19 |                    PX BLOCK ITERATOR |     |  2802 | 70050 |   260(1)| 00:00:01 |  Q1,00 | PCWC |        |
+
+    |* 20 |                     TABLE ACCESS FULL| CUSTOMER  |  2802 | 70050 |   260(1)| 00:00:01 |  Q1,00 | PCWP |        |
+
+    |  21 |             PX BLOCK ITERATOR       |     | 98269 |  4606K|  1817(1)| 00:00:01 |  Q1,02 | PCWC |        |
+
+    |* 22 |              TABLE ACCESS FULL       | ORDERS   | 98269 |  4606K|  1817(1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+    |  23 |         JOIN FILTER USE        | :BF0000   |   443K|    20M|  8203(1)| 00:00:01 |  Q1,03 | PCWP |        |
+
+    |  24 |          PX BLOCK ITERATOR       |     |   443K|    20M|  8203(1)| 00:00:01 |  Q1,03 | PCWC |        |
+
+    |* 25 |           TABLE ACCESS FULL       | LINEITEM  |   443K|    20M|  8203(1)| 00:00:01 |  Q1,03 | PCWP |        |
+
+    -------------------------------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       7 - access("L_ORDERKEY"="O_ORDERKEY")
+      11 - access("ITEM_1"="O_CUSTKEY")
+      20 - filter("C_MKTSEGMENT"='BUILDING')
+      22 - filter("O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+      25 - filter("L_SHIPDATE">TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND
+
+            SYS_OP_BLOOM_FILTER(:BF0000,"L_ORDERKEY"))
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=AUTO)
+       - Degree of Parallelism is 4 because of table property
+
+  - Indexes
+    c_mktsegment
+    l_orderkey
+    o_shippriority
+    o_custkey
+    c_custkey
+    o_orderdate
+    l_shipdate
+    
+    | Id  | Operation                 | Name        | Rows| Bytes |TempSpc| Cost (%CPU)| Time |
+
+    -------------------------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT              |         |   747K|    52M|   | 43201   (1)| 00:00:02 |
+
+    |   1 |  HASH GROUP BY                |         |   747K|    52M|   | 43201   (1)| 00:00:02 |
+
+    |   2 |   MERGE JOIN                  |         |   747K|    52M|   | 43175   (1)| 00:00:02 |
+
+    |   3 |    SORT JOIN                  |         |  3654K|    90M|   | 29663   (1)| 00:00:02 |
+
+    |   4 |     VIEW                  | VW_GBC_9        |  3654K|    90M|   | 29663   (1)| 00:00:02 |
+
+    |   5 |      HASH GROUP BY            |         |  3654K|   167M|   | 29663   (1)| 00:00:02 |
+
+    |*  6 |       TABLE ACCESS FULL           | LINEITEM        |  3654K|   167M|   | 29529   (1)| 00:00:02 |
+
+    |*  7 |    SORT JOIN                  |         |   279K|    12M|    32M| 13513   (1)| 00:00:01 |
+
+    |   8 |     VIEW                  | VW_GBF_10       |   279K|    12M|   | 10173   (1)| 00:00:01 |
+
+    |   9 |      HASH GROUP BY            |         |   279K|    19M|   | 10173   (1)| 00:00:01 |
+
+    |* 10 |       HASH JOIN               |         |   279K|    19M|   | 10164   (1)| 00:00:01 |
+
+    |  11 |        TABLE ACCESS BY INDEX ROWID BATCHED| CUSTOMER        | 33701|   822K|   |  3619   (1)| 00:00:01 |
+
+    |* 12 |         INDEX RANGE SCAN          | CUSTOMER_MKTSEGMENT | 33701|   |   |    98   (0)| 00:00:01 |
+
+    |* 13 |        TABLE ACCESS FULL          | ORDERS      |   682K|    31M|   |  6541   (1)| 00:00:01 |
+
+    -------------------------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       6 - filter("L_SHIPDATE">TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+       7 - access("ITEM_1"="ITEM_1")
+           filter("ITEM_1"="ITEM_1")
+      10 - access("C_CUSTKEY"="O_CUSTKEY")
+      12 - access("C_MKTSEGMENT"='BUILDING')
+      13 - filter("O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - 3 Sql Plan Directives used for this statement    
+
+
+  - Materialized Views
+    create materialized view customer_order_lineitem enable query rewrite as select * from customer, orders, lineitem WHERE c_custkey = o_custkey AND l_orderkey = o_orderkey;
+
+    | Id  | Operation          | Name      | Rows  | Bytes| Cost (%CPU)| Time  |
+
+    ---------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT        |       | 21569 |  1727K| 92265   (1)| 00:00:04 |
+
+    |   1 |  HASH GROUP BY          |       | 21569 |  1727K| 92265   (1)| 00:00:04 |
+
+    |*  2 |   MAT_VIEW REWRITE ACCESS FULL| CUSTOMER_ORDER_LINEITEM | 21569 |  1727K| 92263   (1)| 00:00:04 |
+
+    ---------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - filter("CUSTOMER_ORDER_LINEITEM"."O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00',
+
+            'syyyy-mm-dd hh24:mi:ss') AND "CUSTOMER_ORDER_LINEITEM"."L_SHIPDATE">TO_DATE(' 1995-03-15
+
+            00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND "CUSTOMER_ORDER_LINEITEM"."C_MKTSEGMENT"='BUILDING')
+
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       
+Discussion:
+  The best performance for this query is Parallelism mode. Under the Parallelism mode, we found that there are many new operators such as PX SEND BROADCAST and PX COORDINATOR to manage operations across parallel query processes. Alghough it has more operators than other plans, the performance is still the best among all the query mode for this query. For index and parrllelism modes, they used SORT JOIN, which is not used by other modes.
+
+
+
+
+Query 5:
+  - Compute Statistics
+    | Id  | Operation                   | Name      | Rows  | Bytes |TempSpc| Cost (%CPU)| Time  |
+  
+    -------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT            |           |    25 |  2000 |       | 42211(1)| 00:00:02 |
+
+    |   1 |  HASH GROUP BY              |           |    25 |  2000 |       | 42211(1)| 00:00:02 |
+
+    |*  2 |   HASH JOIN                 |           |  7306 |   570K|  2640K| 42209(1)| 00:00:02 |
+
+    |   3 |    TABLE ACCESS FULL        | CUSTOMER  |   150K|   878K|       |   933(1)| 00:00:01 |
+
+    |*  4 |    HASH JOIN                |           |   182K|    12M|  6248K| 40403(1)| 00:00:02 |
+
+    |*  5 |     TABLE ACCESS FULL       | ORDERS    |   228K|  3566K|       |  6543(1)| 00:00:01 |
+
+    |*  6 |     HASH JOIN               |           |  1200K|    66M|       | 29575(1)| 00:00:02 |
+       
+    |   7 |      VIEW                   | VW_GBF_35 |  2000 | 86000 |       |    64(2)| 00:00:01 |
+
+    |   8 |       HASH GROUP BY         |           |  2000 |   119K|       |    64(2)| 00:00:01 |
+
+    |*  9 |        HASH JOIN            |           |  2000 |   119K|       |    63(0)| 00:00:01 |
+
+    |  10 |         TABLE ACCESS FULL   | NATION    |    25 |   725 |       |     2(0)| 00:00:01 |
+
+    |  11 |         MERGE JOIN CARTESIAN|           | 10000 |   312K|       |    61(0)| 00:00:01 |
+
+    |* 12 |          TABLE ACCESS FULL  | REGION    |     1 |    27 |       |     2(0)| 00:00:01 |
+
+    |  13 |          BUFFER SORT        |           | 10000 | 50000 |       |    59(0)| 00:00:01 |
+
+    |  14 |           TABLE ACCESS FULL | SUPPLIER  | 10000 | 50000 |       |    59(0)| 00:00:01 |
+
+    |  15 |      TABLE ACCESS FULL      | LINEITEM  |  6001K|    85M|       | 29489(1)| 00:00:02 |
+
+    -------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - access("C_CUSTKEY"="O_CUSTKEY" AND "C_NATIONKEY"="ITEM_1")
+       4 - access("L_ORDERKEY"="O_ORDERKEY")
+       5 - filter("O_ORDERDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+
+            AND "O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+       6 - access("L_SUPPKEY"="ITEM_2")
+       9 - access("N_REGIONKEY"="R_REGIONKEY" AND "S_NATIONKEY"="N_NATIONKEY")
+      12 - filter("R_NAME"='ASIA')
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - 1 Sql Plan Directive used for this statement
+
+  - In-Memory Tables
+    | Id  | Operation                           | Name  | Rows  | Bytes |TempSpc| Cost (%CPU)| Time  |
+
+    ---------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT                    |    |  8296 |   850K||  7955   (4)| 00:00:01 |
+
+    |   1 |  HASH GROUP BY                      |    |  8296 |   850K||  7955   (4)| 00:00:01 |
+
+    |*  2 |   HASH JOIN                         |    |  8296 |   850K|    10M|  7954   (4)| 00:00:01 |
+
+    |   3 |    VIEW                             | VW_GBF_36 |   215K|  8189K||  1116   (6)| 00:00:01 |
+
+    |   4 |     HASH GROUP BY                   |    |   215K|    12M||  1116   (6)| 00:00:01 |
+
+    |*  5 |      HASH JOIN                      |    |   215K|    12M|  6096K|  1109   (6)| 00:00:01 |
+
+    |   6 |       TABLE ACCESS INMEMORY FULL    | CUSTOMER  |   164K|  4167K||    39  (11)| 00:00:01 |
+
+    |*  7 |       TABLE ACCESS INMEMORY FULL    | ORDERS  |   215K|  7349K||   293  (18)| 00:00:01 |
+
+    |   8 |    VIEW                             | VW_GBC_35 |  1351K|    85M||  1325  (18)| 00:00:01 |
+
+    |   9 |     HASH GROUP BY                   |    |  1351K|   220M||  1325  (18)| 00:00:01 |
+
+    |* 10 |      HASH JOIN                      |    |  1351K|   220M||  1278  (15)| 00:00:01 |
+
+    |  11 |       JOIN FILTER CREATE            | :BF0000  |  2151 |   249K||     4   (0)| 00:00:01 |
+
+    |* 12 |        HASH JOIN                    |    |  2151 |   249K||     4   (0)| 00:00:01 |
+
+    |  13 |         TABLE ACCESS INMEMORY FULL  | NATION  |    25 |  1325 ||     1   (0)| 00:00:01 |
+
+    |  14 |         MERGE JOIN CARTESIAN        |    | 10753 |   693K||     3   (0)| 00:00:01 |
+
+    |* 15 |          TABLE ACCESS INMEMORY FULL | REGION  |     1 |    40 ||     1   (0)| 00:00:01 |
+
+    |  16 |          BUFFER SORT                |    | 10753 |   273K||     3   (0)| 00:00:01 |
+
+    |  17 |           TABLE ACCESS INMEMORY FULL| SUPPLIER  | 10753 |   273K||     3   (0)| 00:00:01 |
+
+    |  18 |       JOIN FILTER USE               | :BF0000  |  6755K|   335M||  1249  (13)| 00:00:01 |
+
+    |* 19 |        TABLE ACCESS INMEMORY FULL   | LINEITEM  |  6755K|   335M||  1249  (13)| 00:00:01 |
+
+    ---------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - access("ITEM_2"="ITEM_2" AND "ITEM_1"="ITEM_1")
+       5 - access("C_CUSTKEY"="O_CUSTKEY")
+       7 - inmemory("O_ORDERDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND
+
+            "O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+           filter("O_ORDERDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND
+
+            "O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+      10 - access("L_SUPPKEY"="S_SUPPKEY")
+      12 - access("N_REGIONKEY"="R_REGIONKEY" AND "S_NATIONKEY"="N_NATIONKEY")
+      15 - inmemory("R_NAME"='ASIA')
+           filter("R_NAME"='ASIA')
+      19 - inmemory(SYS_OP_BLOOM_FILTER(:BF0000,"L_SUPPKEY"))
+           filter(SYS_OP_BLOOM_FILTER(:BF0000,"L_SUPPKEY"))
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - 1 Sql Plan Directive used for this statement
+
+
+  - Parallelism
+    skip
+
+
+  - Indexes
+    c_custkey
+    o_custkey
+    l_orderkey
+    o_orderkey
+    l_suppkey
+    s_suppkey
+    c_nationkey
+    s_nationkey
+    n_nationkey
+    n_regionkey
+    r_regionkey
+    r_name
+    n_name
+    o_orderdate
+
+    | Id  | Operation              | Name       | Rows  | Bytes|TempSpc| Cost (%CPU)| Time |
+
+    -----------------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT           |            |  6352 |   651K|   | 43469   (1)| 00:00:02 |
+
+    |   1 |  HASH GROUP BY             |            |  6352 |   651K|   | 43469   (1)| 00:00:02 |
+
+    |*  2 |   HASH JOIN            |            |  6352 |   651K|    11M| 43468   (1)| 00:00:02 |
+
+    |   3 |    VIEW                | VW_GBF_36      |   230K|  8797K|   |  8299   (1)| 00:00:01 |
+
+    |   4 |     HASH GROUP BY          |            |   230K|    13M|   |  8299   (1)| 00:00:01 |
+
+    |*  5 |      HASH JOIN             |            |   230K|    13M|  6096K|  8292   (1)| 00:00:01 |
+
+    |   6 |       TABLE ACCESS FULL        | CUSTOMER       |   164K|  4167K|   |   933   (1)| 00:00:01 |
+
+    |*  7 |       TABLE ACCESS FULL        | ORDERS     |   230K|  7895K|   |  6546   (1)| 00:00:01 |
+
+    |   8 |    VIEW                | VW_GBC_35      |  1351K|    85M|   | 29617   (1)| 00:00:02 |
+
+    |   9 |     HASH GROUP BY          |            |  1351K|   220M|   | 29617   (1)| 00:00:02 |
+
+    |* 10 |      HASH JOIN             |            |  1351K|   220M|   | 29570   (1)| 00:00:02 |
+
+    |* 11 |       HASH JOIN            |            |  2151 |   249K|   |    48   (0)| 00:00:01 |
+
+    |  12 |        NESTED LOOPS        |            |     5 |   465|   |     3   (0)| 00:00:01 |
+
+    |  13 |         NESTED LOOPS           |            |     5 |   465|   |     3   (0)| 00:00:01 |
+
+    |* 14 |          TABLE ACCESS FULL     | REGION     |     1 |    40|   |     2   (0)| 00:00:01 |
+
+    |* 15 |          INDEX RANGE SCAN      | NATION_REGIONKEY   |     5 ||   |     0   (0)| 00:00:01 |
+
+    |  16 |         TABLE ACCESS BY INDEX ROWID| NATION     |     5 |   265|   |     1   (0)| 00:00:01 |
+
+    |  17 |        VIEW            | index$_join$_004   | 10753 |   273K|   |    45   (0)| 00:00:01 |
+
+    |* 18 |         HASH JOIN          |            |   ||   |        |      |
+
+    |  19 |          INDEX FAST FULL SCAN      | SUPPLIER_NATIONKEY | 10753 |   273K|   |    28   (0)| 00:00:01 |
+
+    |  20 |          INDEX FAST FULL SCAN      | SUPPLIER_SUPPKEY   | 10753 |   273K|   |    29   (0)| 00:00:01 |
+
+    |  21 |       TABLE ACCESS FULL        | LINEITEM       |  6755K|   335M|   | 29496   (1)| 00:00:02 |
+
+    -----------------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - access("ITEM_2"="ITEM_2" AND "ITEM_1"="ITEM_1")
+       5 - access("C_CUSTKEY"="O_CUSTKEY")
+       7 - filter("O_ORDERDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND
+
+              "O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+      10 - access("L_SUPPKEY"="S_SUPPKEY")
+      11 - access("S_NATIONKEY"="N_NATIONKEY")
+      14 - filter("R_NAME"='ASIA')
+      15 - access("N_REGIONKEY"="R_REGIONKEY")
+      18 - access(ROWID=ROWID)
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - 2 Sql Plan Directives used for this statement
+
+  - Materialized Views
+    create materialized view colsnr enable query rewrite as select * from lineitem, orders, customer, supplier, nation, region where c_custkey = o_custkey AND l_orderkey = o_orderkey AND l_suppkey = s_suppkey AND c_nationkey = s_nationkey AND s_nationkey = n_nationkey AND n_regionkey = r_regionkey;
+    
+    | Id  | Operation          | Name   | Rows  | Bytes | Cost (%CPU)| Time     |
+
+    ----------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT        |        |  7093 |   616K|  7137   (1)| 00:00:01 |
+
+    |   1 |  HASH GROUP BY          |        |  7093 |   616K|  7137   (1)| 00:00:01 |
+
+    |*  2 |   MAT_VIEW REWRITE ACCESS FULL| COLSNR |  7093 |   616K|  7136   (1)| 00:00:01 |
+
+    ----------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - filter("COLSNR"."O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00',
+            'syyyy-mm-dd hh24:mi:ss') AND "COLSNR"."O_ORDERDATE"<TO_DATE(' 1995-01-01
+
+            00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND "COLSNR"."R_NAME"='ASIA')
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)  
+       
+       
+Discussion:
+  The best performance for this query is Materialized Views mode. It took a long time for this query to finish under the Parallelism mode so that we skipped the Parallelism mode. For the index mode, it created more temporary views than other modes. 
+
+
+
+Query 6:
+  - Compute Statistics
+    -------------------------------------------------------------------------------
+    | Id  | Operation          | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+    -------------------------------------------------------------------------------
+    |   0 | SELECT STATEMENT   |        |     1 |    16 | 29527  (1)| 00:00:02 |
+    |   1 |  SORT AGGREGATE    |        |     1 |    16 |      |        |
+    |*  2 |   TABLE ACCESS FULL| LINEITEM |   155K|  2435K| 29527  (1)| 00:00:02 |
+    -------------------------------------------------------------------------------
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - filter("L_SHIPDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd
+            hh24:mi:ss') AND "L_QUANTITY"<24 AND "L_DISCOUNT">=.05 AND
+            "L_SHIPDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')
+
+            AND "L_DISCOUNT"<=.07)
+
+  
+
+
+  - In-Memory Tables
+    | Id  | Operation        | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+
+    ----------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT      |         |     1 |    48 |  1279  (15)| 00:00:01 |
+
+    |   1 |  SORT AGGREGATE       |         |     1 |    48 |      | |
+
+    |*  2 |   TABLE ACCESS INMEMORY FULL| LINEITEM |   129K|  6057K|  1279  (15)| 00:00:01 |
+
+    ----------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - inmemory("L_SHIPDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd
+            hh24:mi:ss') AND "L_SHIPDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd
+
+            hh24:mi:ss') AND "L_DISCOUNT">=.05 AND "L_DISCOUNT"<=.07 AND "L_QUANTITY"<24)
+
+           filter("L_SHIPDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd
+            hh24:mi:ss') AND "L_SHIPDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd
+
+            hh24:mi:ss') AND "L_DISCOUNT">=.05 AND "L_DISCOUNT"<=.07 AND "L_QUANTITY"<24)
+
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)  
+
+
+
+  - Parallelism
+    | Id  | Operation         | Name    | Rows  | Bytes | Cost (%CPU)| Time|    TQ  |IN-OUT| PQ Distrib |
+
+    ----------------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT       |    |  1 |    48 |  8203   (1)| 00:00:01 |     |    |         |
+
+    |   1 |  SORT AGGREGATE        |    |  1 |    48 |         ||     |    |         |
+
+    |   2 |   PX COORDINATOR       |    |    |    |         ||     |    |         |
+
+    |   3 |    PX SEND QC (RANDOM) | :TQ10000 |  1 |    48 |         ||  Q1,00 | P->S | QC (RAND)  |
+
+    |   4 |     SORT AGGREGATE     |    |  1 |    48 |         ||  Q1,00 | PCWP |         |
+
+    |   5 |      PX BLOCK ITERATOR |    |   124K|  5845K|  8203   (1)| 00:00:01 |  Q1,00 | PCWC |         |
+
+    |*  6 |       TABLE ACCESS FULL| LINEITEM |   124K|  5845K|  8203   (1)| 00:00:01 |  Q1,00 | PCWP |         |
+
+    ----------------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       6 - filter("L_SHIPDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND
+
+            "L_SHIPDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND "L_DISCOUNT">=.05 AND
+
+            "L_DISCOUNT"<=.07 AND "L_QUANTITY"<24)
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=AUTO)
+       - Degree of Parallelism is 4 because of table property
+
+  - Indexes
+    l_shipdate
+    l_discount
+    l_quantity
+    
+    | Id  | Operation                | Name      | Rows  | Bytes| Cost (%CPU)| Time     |
+
+    ----------------------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT             |           |     1 |    48|   601K  (1)| 00:00:24 |
+
+    |   1 |  SORT AGGREGATE              |           |     1 |    48|        |      |
+
+    |*  2 |   TABLE ACCESS BY INDEX ROWID BATCHED| LINEITEM      |   116K|  5438K|   601K  (1)| 00:00:24 |
+
+    |*  3 |    INDEX RANGE SCAN          | LINEITEM_SHIPDATE |   909K||  1640   (1)| 00:00:01 |
+
+    ----------------------------------------------------------------------------------------------------------
+
+
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+
+       2 - filter("L_DISCOUNT">=.05 AND "L_DISCOUNT"<=.07 AND "L_QUANTITY"<24)
+       3 - access("L_SHIPDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND
+              "L_SHIPDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+
+    Note
+    -----
+       - dynamic statistics used: dynamic sampling (level=2)
+       - 2 Sql Plan Directives used for this statement    
+
+  - Materialized Views
+    create materialized view lineitem_view enable query rewrite as select * from lineitem where l_shipdate >= date '1994-01-01' and l_shipdate < date '1995-01-01' and l_discount between 0.06 - 0.01 and 0.06 + 0.01 and l_quantity < 24;
+
+    | Id  | Operation          | Name        | Rows  | Bytes | Cost (%CPU)| Time     |
+
+    -----------------------------------------------------------------------------------------------
+
+    |   0 | SELECT STATEMENT        |         |     1 |     9 |   562(1)| 00:00:01 |
+
+    |   1 |  SORT AGGREGATE         |         |     1 |     9 ||        |
+
+    |   2 |   MAT_VIEW REWRITE ACCESS FULL| LINEITEM_VIEW |   114K|  1003K|   562(1)| 00:00:01 |
+
+    -----------------------------------------------------------------------------------------------        
+        
+        
+Discussion:
+  The best performance for this query is Materialized Views mode. But this query only queries data from one table, so the materialized view only performs the where operation for the query. Thus, it is reasonable for it to be the fastest mode. If we ignore the materialized view mode for this query, then in-memory mode is the fastest. 
+
+        
+Exercise 3:
+===================================================================================================
+Combination 1: combining all 5 possible optimiztion introduced in Exercise 2 （exclude index for query1, parallelism for query 5?)
+
+Please describe the optimizations that you have selected, and record the query plans. Create a plot that compares each fully-optimized query to the original 'out-of-the-box' version. For each query, discuss the difference in performance. Did your optimizations help? Why or why not?
+
+Query 18:
+We used materialized view, parallelism and index to optimize this query, but the optimized plan does't make use of materialized view. Instead, indexes are used to speed up table scan operation.
+
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2218753418
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+| Id  | Operation             | Name     | Rows | Bytes |TempSpc| Cost (%CPU)| Time   |    TQ  |IN-OUT| PQ Distrib |
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT           |       |   122 |  7808 |   | 12276   (1)| 00:00:01 |    |   |        |
+
+|   1 |  PX COORDINATOR            |       | |   |   |        |    |    |   |        |
+
+|   2 |   PX SEND QC (RANDOM)           | :TQ10003    |   122 |  7808 |   | 12276   (1)| 00:00:01 |  Q1,03 | P->S | QC (RAND)  |
+
+|   3 |    HASH GROUP BY           |       |   122 |  7808 |   | 12276   (1)| 00:00:01 |  Q1,03 | PCWP |        |
+
+|   4 |     PX RECEIVE             |       |   122 |  7808 |   | 12276   (1)| 00:00:01 |  Q1,03 | PCWP |        |
+
+|   5 |      PX SEND HASH           | :TQ10002    |   122 |  7808 |   | 12276   (1)| 00:00:01 |  Q1,02 | P->P | HASH       |
+
+|   6 |       HASH GROUP BY           |       |   122 |  7808 |   | 12276   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+|   7 |        NESTED LOOPS           |       |   122 |  7808 |   | 12275   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+|   8 |   NESTED LOOPS           |       |   122 |  7808 |   | 12275   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+|   9 |    NESTED LOOPS           |       |    30 |  1650 |   | 12250   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+|* 10 |     HASH JOIN           |       |    30 |   930 |   | 12233   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+|  11 |      PX RECEIVE           |       | 73952 |   433K|   | 10415   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+|  12 |       PX SEND BROADCAST         | :TQ10001    | 73952 |   433K|   | 10415   (1)| 00:00:01 |  Q1,01 | P->P | BROADCAST  |
+
+|  13 |        VIEW           | VW_NSO_1    | 73952 |   433K|   | 10415   (1)| 00:00:01 |  Q1,01 | PCWP |        |
+
+|* 14 |         FILTER           |       | |   |   |        |    |  Q1,01 | PCWC |        |
+
+|  15 |          HASH GROUP BY         |       |   185 |   649K|   114M| 10415   (1)| 00:00:01 |  Q1,01 | PCWP |        |
+
+|  16 |     PX RECEIVE         |       |   185 |   649K|   | 10415   (1)| 00:00:01 |  Q1,01 | PCWP |        |
+
+|  17 |      PX SEND HASH         | :TQ10000    |   185 |   649K|   | 10415   (1)| 00:00:01 |  Q1,00 | P->P | HASH       |
+
+|  18 |       HASH GROUP BY        |       |   185 |   649K|   114M| 10415   (1)| 00:00:01 |  Q1,00 | PCWP |        |
+
+|  19 |        PX BLOCK ITERATOR       |       |  6001K|    51M|   |  8181   (1)| 00:00:01 |  Q1,00 | PCWC |        |
+
+|  20 |         TABLE ACCESS FULL       | LINEITEM    |  6001K|    51M|   |  8181   (1)| 00:00:01 |  Q1,00 | PCWP |        |
+
+|  21 |      PX BLOCK ITERATOR         |       |  1500K|    35M|   |  1815   (1)| 00:00:01 |  Q1,02 | PCWC |        |
+
+|  22 |       TABLE ACCESS FULL         | ORDERS     |  1500K|    35M|   |  1815   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+|  23 |     TABLE ACCESS BY INDEX ROWID BATCHED| CUSTOMER    |     1 |    24 |   |     2   (0)| 00:00:01 |  Q1,02 | PCWP |        |
+
+|* 24 |      INDEX RANGE SCAN         | CUSTOMER_CUSTKEY  |     1 |   |   |     1   (0)| 00:00:01 |  Q1,02 | PCWP |        |
+
+|* 25 |    INDEX RANGE SCAN         | LINEITEM_ORDERKEY |     4 |   |   |     2   (0)| 00:00:01 |  Q1,02 | PCWP |        |
+
+|  26 |   TABLE ACCESS BY INDEX ROWID       | LINEITEM    |     4 |    36 |   |     3   (0)| 00:00:01 |  Q1,02 | PCWP |        |
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+  10 - access("O_ORDERKEY"="L_ORDERKEY")
+  14 - filter(SUM(SYS_OP_CSR(SYS_OP_MSR(SUM("L_QUANTITY")),0))>300)
+  24 - access("C_CUSTKEY"="O_CUSTKEY")
+  25 - access("O_ORDERKEY"="L_ORDERKEY")
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=AUTO)
+   - Degree of Parallelism is 4 because of table property
+
+
+Statistics
+----------------------------------------------------------
+   24  recursive calls
+    0  db block gets
+     133400  consistent gets
+     132611  physical reads
+  364  redo size
+       4367  bytes sent via SQL*Net to client
+  585  bytes received via SQL*Net from client
+    5  SQL*Net roundtrips to/from client
+    0  sorts (memory)
+    0  sorts (disk)
+   57  rows processe
+   
+   
+Query 1:
+Optimization strategy: in-memory table + parallelism. Index cannot be used here for it slows down the process for unknown reason. Materialized view does improve the performance slightly, but no better than in-memory tables.
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2698183184
+
+---------------------------------------------------------------------------------------------------------------------------
+
+| Id  | Operation        | Name     | Rows  | Bytes | Cost (%CPU)| Time     |    TQ  |IN-OUT| PQ Distrib |
+
+---------------------------------------------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT      |       |     4 |   108 |   417  (28)| 00:00:01 |        |      |      |
+
+|   1 |  PX COORDINATOR       |       |       |       |  |       |        |      |      |
+
+|   2 |   PX SEND QC (RANDOM)      | :TQ10001 |     4 |   108 |   417  (28)| 00:00:01 |  Q1,01 | P->S | QC (RAND)  |
+
+|   3 |    HASH GROUP BY      |       |     4 |   108 |   417  (28)| 00:00:01 |  Q1,01 | PCWP |      |
+
+|   4 |     PX RECEIVE        |       |     4 |   108 |   417  (28)| 00:00:01 |  Q1,01 | PCWP |      |
+
+|   5 |      PX SEND HASH      | :TQ10000 |     4 |   108 |   417  (28)| 00:00:01 |  Q1,00 | P->P | HASH    |
+
+|   6 |       HASH GROUP BY      |       |     4 |   108 |   417  (28)| 00:00:01 |  Q1,00 | PCWP |      |
+
+|   7 |        PX BLOCK ITERATOR    |       |  6387K|   164M|   355  (15)| 00:00:01 |  Q1,00 | PCWC |      |
+
+|*  8 |   TABLE ACCESS INMEMORY FULL| LINEITEM |  6387K|   164M|   355  (15)| 00:00:01 |  Q1,00 | PCWP |      |
+
+---------------------------------------------------------------------------------------------------------------------------
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   8 - inmemory("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+       filter("L_SHIPDATE"<=TO_DATE(' 1998-09-02 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=AUTO)
+   - Degree of Parallelism is 4 because of table property
+
+
+Statistics
+----------------------------------------------------------
+   24  recursive calls
+    0  db block gets
+   41  consistent gets
+    0  physical reads
+    0  redo size
+       1694  bytes sent via SQL*Net to client
+  552  bytes received via SQL*Net from client
+    2  SQL*Net roundtrips to/from client
+    0  sorts (memory)
+    0  sorts (disk)
+    4  rows processe
+    
+Query 22:
+Optimization strategy: in-memory table + materialized view + parallelism. The optimized performance is of little difference with the performance of only materialized view, possibly because the query is already optimized utterly.
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2035281595
+
+--------------------------------------------------------------------------------------------
+
+| Id  | Operation          | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+
+--------------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT        |      |  6384 |   130K|  42   (3)| 00:00:01 |
+
+|   1 |  HASH GROUP BY          |      |  6384 |   130K|  42   (3)| 00:00:01 |
+
+|   2 |   MAT_VIEW REWRITE ACCESS FULL| C_VIEW_Q22 |  6384 |   130K|  41   (0)| 00:00:01 |
+
+--------------------------------------------------------------------------------------------
+
+
+
+Statistics
+----------------------------------------------------------
+    0  recursive calls
+    0  db block gets
+  150  consistent gets
+    0  physical reads
+    0  redo size
+  855  bytes sent via SQL*Net to client
+  551  bytes received via SQL*Net from client
+    2  SQL*Net roundtrips to/from client
+    0  sorts (memory)
+    0  sorts (disk)
+    7  rows processed
+
+
+
+
+Query 3:
+We used parallelism, index, and materialized views for this query. We also set index and materialized to use parallel 4; The average runtime for this modification is 0.76 second, which is close to the result, 0.744 second, that only uses parallel. The result shows that using only the parallel mode is the best.
+
+   | Id  | Operation             | Name| Rows  | Bytes |TempSpc| Cost (%CPU)| Time   |    TQ  |IN-OUT| PQ Distrib |
+
+  ----------------------------------------------------------------------------------------------------------------------------------------
+
+  |   0 | SELECT STATEMENT           ||   497K|    28M|   | 15345   (1)| 00:00:01 |    |   |        |
+
+  |   1 |  PX COORDINATOR            ||   |   |   |        |    |    |   |        |
+
+  |   2 |   PX SEND QC (RANDOM)           | :TQ10003|   497K|    28M|   | 15345   (1)| 00:00:01 |  Q1,03 | P->S | QC (RAND)  |
+
+  |   3 |    HASH GROUP BY           ||   497K|    28M|    34M| 15345   (1)| 00:00:01 |  Q1,03 | PCWP |        |
+
+  |   4 |     PX RECEIVE             ||   497K|    28M|   | 15345   (1)| 00:00:01 |  Q1,03 | PCWP |        |
+
+  |   5 |      PX SEND HASH           | :TQ10002|   497K|    28M|   | 15345   (1)| 00:00:01 |  Q1,02 | P->P | HASH       |
+
+  |   6 |       HASH GROUP BY           ||   497K|    28M|    34M| 15345   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+  |*  7 |        HASH JOIN           ||   497K|    28M|   | 13553   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+  |   8 |         JOIN FILTER CREATE         | :BF0000|   218K|  7884K|   |  5358   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+  |   9 |          PX RECEIVE           ||   218K|  7884K|   |  5358   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+  |  10 |           PX SEND BROADCAST         | :TQ10001|   218K|  7884K|   |  5358   (1)| 00:00:01 |  Q1,01 | P->P | BROADCAST  |
+
+  |* 11 |            HASH JOIN           ||   218K|  7884K|   |  5358   (1)| 00:00:01 |  Q1,01 | PCWP |        |
+
+  |  12 |             JOIN FILTER CREATE         | :BF0001| 30142 |   470K|   |  3541   (1)| 00:00:01 |  Q1,01 | PCWP |        |
+
+  |  13 |              PX RECEIVE          || 30142 |   470K|   |  3541   (1)| 00:00:01 |  Q1,01 | PCWP |        |
+
+  |  14 |               PX SEND BROADCAST        | :TQ10000| 30142 |   470K|   |  3541   (1)| 00:00:01 |  Q1,00 | S->P | BROADCAST  |
+
+  |  15 |                PX SELECTOR         ||   |   |   |        |    |  Q1,00 | SCWC |        |
+
+  |  16 |                 TABLE ACCESS BY INDEX ROWID BATCHED| CUSTOMER| 30142 |   470K|   |  3541   (1)| 00:00:01 |  Q1,00 | SCWC |        |
+
+  |* 17 |                  INDEX RANGE SCAN       | CUSTOMER_MKTSEGMENT| 30142 |   |   |    95   (0)| 00:00:01 |  Q1,00 | SCWP |        |
+
+  |  18 |           JOIN FILTER USE         | :BF0001|   729K|    14M|   |  1816   (1)| 00:00:01 |  Q1,01 | PCWP |        |
+
+  |  19 |            PX BLOCK ITERATOR         ||   729K|    14M|   |  1816   (1)| 00:00:01 |  Q1,01 | PCWC |        |
+
+  |* 20 |             TABLE ACCESS FULL        | ORDERS|   729K|    14M|   |  1816   (1)| 00:00:01 |  Q1,01 | PCWP |        |
+
+  |  21 |       JOIN FILTER USE          | :BF0000|  3225K|    70M|   |  8191   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+  |  22 |        PX BLOCK ITERATOR         ||  3225K|    70M|   |  8191   (1)| 00:00:01 |  Q1,02 | PCWC |        |
+
+  |* 23 |         TABLE ACCESS FULL         | LINEITEM|  3225K|    70M|   |  8191   (1)| 00:00:01 |  Q1,02 | PCWP |        |
+
+  ---------------------------------------------------------------------------------------------------------------------------------
+
+
+  Predicate Information (identified by operation id):
+  ---------------------------------------------------
+
+     7 - access("L_ORDERKEY"="O_ORDERKEY")
+    11 - access("C_CUSTKEY"="O_CUSTKEY")
+    17 - access("C_MKTSEGMENT"='BUILDING')
+    20 - filter("O_ORDERDATE"<TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND SYS_OP_BLOOM_FILTER(:BF0001,"O_CUSTKEY"))
+    23 - filter("L_SHIPDATE">TO_DATE(' 1995-03-15 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND SYS_OP_BLOOM_FILTER(:BF0000,"L_ORDERKEY"))
+
+
+  Note
+  -----
+     - dynamic statistics used: dynamic sampling (level=AUTO)
+     - Degree of Parallelism is 4 because of table property
+
+
+Query 5:
+We used materialized view, index, and In-memory for this query. The result shows that it needs only average 0.014 second to finish the query. The materialized view mode already performed very well (average 0.11 second). After we combined it with index and In-memory modes, which also improve the original performance, the 
+
+| Id  | Operation             | Name  | Rows  | Bytes | Cost (%CPU)| Time  |
+
+-------------------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT           |  |  5841 |   507K|   326(20)| 00:00:01 |
+
+|   1 |  HASH GROUP BY             |  |  5841 |   507K|   326(20)| 00:00:01 |
+
+|*  2 |   MAT_VIEW REWRITE ACCESS INMEMORY FULL| COLSNR |  5841 |   507K|   325(20)| 00:00:01 |
+
+-------------------------------------------------------------------------------------------------
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - inmemory("COLSNR"."O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd
+
+        hh24:mi:ss') AND "COLSNR"."O_ORDERDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd
+
+        hh24:mi:ss') AND "COLSNR"."R_NAME"='ASIA')
+       filter("COLSNR"."O_ORDERDATE">=TO_DATE(' 1994-01-01 00:00:00', 'syyyy-mm-dd
+
+        hh24:mi:ss') AND "COLSNR"."O_ORDERDATE"<TO_DATE(' 1995-01-01 00:00:00', 'syyyy-mm-dd
+
+        hh24:mi:ss') AND "COLSNR"."R_NAME"='ASIA')
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=2)
+
+
+
+
+
+Query 6:
+We used In-memory and materialized view for this query. The result shows that it can further improve the best performance in Exercise 2 from average 0.042 to 0.02 second. The materialized view mode already performed very well and adding In-memory mode makes it become faster.
+
+
+
+| Id  | Operation             | Name         | Rows  | Bytes |Cost (%CPU)| Time     |
+
+--------------------------------------------------------------------------------------------------------
+
+|   0 | SELECT STATEMENT           |         |     1 |    26 |23   (9)| 00:00:01 |
+
+|   1 |  SORT AGGREGATE            |         |     1 |    26 ||         |
+
+|   2 |   MAT_VIEW REWRITE ACCESS INMEMORY FULL| LINEITEM_VIEW |   110K|  2806K|23   (9)| 00:00:01 |
+
+--------------------------------------------------------------------------------------------------------
+
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=2)
