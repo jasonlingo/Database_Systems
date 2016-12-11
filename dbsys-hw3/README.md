@@ -1,0 +1,1 @@
+See [Description and Requirement](https://github.com/jasonlingo/Database_Systems/blob/master/dbsys-hw3/Description%20and%20Requirement.pdf) for the detailed infomation about the implementation of this assignment.
